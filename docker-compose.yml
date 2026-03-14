@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  hifi-blog:
+    build: .
+    container_name: my_hifi_blog
+    restart: always
+    ports:
+      # 【核心安全配置】宿主机的 127.0.0.1:8080 映射到容器的 80 端口
+      - "127.0.0.1:8080:80"

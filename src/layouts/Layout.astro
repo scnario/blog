@@ -1,0 +1,125 @@
+---
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body class="antialiased min-h-screen flex justify-center py-10 px-5 relative overflow-x-hidden">
+    <div class="fixed inset-0 z-[-1] opacity-[0.03] pointer-events-none" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E&quot;);"></div>
+    
+    <slot />
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('pre').forEach(pre => {
+          if (pre.parentElement?.classList.contains('code-body')) return;
+          const lang = pre.getAttribute('data-language') || 'BASH';
+          const wrapper = document.createElement('div');
+          wrapper.className = 'code-wrapper';
+          
+          const header = document.createElement('div');
+          header.className = 'code-header';
+          header.innerHTML = `
+            <div class="code-lang">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              ${lang.toUpperCase()}
+            </div>
+            <button class="copy-btn">
+              <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg>
+              <span>Copy</span>
+            </button>
+          `;
+          
+          const body = document.createElement('div');
+          body.className = 'code-body';
+          
+          pre.parentNode?.insertBefore(wrapper, pre);
+          wrapper.appendChild(header);
+          wrapper.appendChild(body);
+          body.appendChild(pre);
+
+          const copyBtn = header.querySelector('.copy-btn');
+          copyBtn?.addEventListener('click', () => {
+            navigator.clipboard.writeText(pre.textContent || '').then(() => {
+              copyBtn.classList.add('copied');
+              copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg><span>Copied!</span>';
+              setTimeout(() => {
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg><span>Copy</span>';
+              }, 2000);
+            });
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg-base: #202124; --bg-darker: #161719; --bg-lighter: #2a2b2f;
+    --text-title: #f8fafc; --text-subtitle: #e2e8f0; --text-body: #a1a1aa;
+    --text-accent: #f5a623; --text-code: #10b981;
+    --shadow-out: 10px 10px 20px var(--bg-darker), -10px -10px 20px var(--bg-lighter);
+  }
+  body { background-color: var(--bg-base); color: var(--text-body); }
+  h1 { color: var(--text-title); font-size: 2.2em; margin-top: 0; font-weight: 700; letter-spacing: 0.5px;}
+  h2 { color: var(--text-subtitle); margin-top: 40px; font-weight: 600; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  p { font-size: 1.05em; line-height: 1.8; margin-bottom: 20px;}
+  
+  a { color: var(--text-accent); text-decoration: none; border-bottom: 1px dashed rgba(245, 166, 35, 0.4); transition: all 0.3s ease; }
+  a:hover { color: #ffc107; border-bottom-style: solid; text-shadow: 0 0 8px rgba(245, 166, 35, 0.5); }
+
+  .hifi-card {
+    position: relative; background: var(--bg-base); border-radius: 20px;
+    padding: 50px; box-shadow: var(--shadow-out); border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: box-shadow 0.4s ease;
+  }
+  .hifi-card:hover { box-shadow: 15px 15px 30px var(--bg-darker), -15px -15px 30px var(--bg-lighter); }
+  .hifi-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: inherit; pointer-events: none; border: 2px solid transparent;
+    background: linear-gradient(120deg, transparent, var(--text-accent), var(--text-code), transparent) border-box;
+    background-size: 300% 100%;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: 0; transition: opacity 0.4s ease; animation: flowGradient 3s linear infinite;
+  }
+  .hifi-card:hover::after { opacity: 1; }
+  @keyframes flowGradient { 0% { background-position: 100% 50%; } 100% { background-position: -50% 50%; } }
+
+  .code-wrapper {
+    margin: 30px 0; background: #18191c; border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06); overflow: hidden;
+    box-shadow: inset 4px 4px 10px rgba(0,0,0,0.4);
+  }
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #1f2024; padding: 8px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-family: -apple-system, sans-serif; font-size: 12px; font-weight: 600; color: #8a8d93;
+  }
+  .code-lang { display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px; }
+  .copy-btn {
+    background: transparent; border: none; color: #8a8d93; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; font-size: 12px; transition: color 0.2s; padding: 4px; border-radius: 4px;
+  }
+  .copy-btn:hover { color: var(--text-title); background: rgba(255,255,255,0.05); }
+  .copy-btn svg { width: 14px; height: 14px; fill: currentColor; }
+  .copy-btn.copied { color: var(--text-code); }
+  .code-body { padding: 16px 0; overflow-x: auto; }
+  .code-body pre { background: transparent !important; margin: 0; padding: 0 16px; font-family: 'Consolas', 'Menlo', monospace; font-size: 14px; }
+  .code-body pre code { counter-reset: step; counter-increment: step 0; }
+  .code-body pre code .line::before {
+    content: counter(step); counter-increment: step;
+    width: 1.5rem; margin-right: 1.5rem; display: inline-block;
+    text-align: right; color: #4a4d55; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 10px;
+  }
+</style>
