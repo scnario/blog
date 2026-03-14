@@ -1,5 +1,6 @@
 # === 阶段一：使用 Node 构建静态文件 ===
-FROM node:20-alpine AS builder
+# 【修改这里】：将 20 升级为 22
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # 复制 package.json 并安装依赖
