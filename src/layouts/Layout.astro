@@ -1,8 +1,14 @@
 ---
-interface Props {
-  title: string;
-}
-const { title } = Astro.props;
+import '../styles/global.css';
+import HeroHeader from '../components/HeroHeader.astro';
+import ProfileCard from '../components/ProfileCard.astro';
+import TocPanel from '../components/TocPanel.astro';
+import MusicPlayer from '../components/MusicPlayer.astro';
+
+const { title, frontmatter, headings = [] } = Astro.props;
+const pageTitle = title || frontmatter?.title || '数字花园';
+const toc = headings.filter((h: any) => h.depth <= 3);
+const isMarkdown = !!frontmatter; 
 ---
 
 <!doctype html>
@@ -10,51 +16,111 @@ const { title } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>{title}</title>
-  </head>
-  <body class="antialiased min-h-screen flex justify-center py-10 px-5 relative overflow-x-hidden">
-    <div class="fixed inset-0 z-[-1] opacity-[0.03] pointer-events-none" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E&quot;);"></div>
+    <title>{pageTitle}</title>
     
-    <slot />
+    <script is:inline>
+      const op = localStorage.getItem('hifi-opacity');
+      const bl = localStorage.getItem('hifi-blur');
+      const tc = localStorage.getItem('hifi-toc');
+      const bg = localStorage.getItem('hifi-bg');
+      const color = localStorage.getItem('hifi-color');
+      const prt = localStorage.getItem('hifi-particles');
+      
+      let am = localStorage.getItem('hifi-avatar-main');
+      let as = localStorage.getItem('hifi-avatar-sub');
+
+      // 💡 终极修复：净化头像的套娃数据
+      if (am && am.startsWith('url(')) am = am.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim();
+      if (as && as.startsWith('url(')) as = as.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim();
+
+      if (op !== null) document.documentElement.style.setProperty('--glass-opacity', op);
+      if (bl !== null) document.documentElement.style.setProperty('--glass-blur', bl + 'px');
+      if (tc !== null) document.documentElement.style.setProperty('--toc-text-blur', tc + 'px');
+      if (bg !== null && bg !== 'none') document.documentElement.style.setProperty('--bg-image', `url('${bg}')`);
+      if (color !== null) document.documentElement.style.setProperty('--text-accent', color);
+      if (prt !== null) document.documentElement.style.setProperty('--show-particles', prt);
+      
+      // 只有在路径纯净的情况下，才套上 url()
+      if (am) document.documentElement.style.setProperty('--avatar-main', `url('${am}')`);
+      if (as) document.documentElement.style.setProperty('--avatar-sub', `url('${as}')`);
+    </script>
+  </head>
+  
+  <body class="antialiased min-h-screen py-12 px-6 relative overflow-x-hidden bg-cover bg-fixed bg-center" 
+        style="background-image: var(--bg-image, url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'));">
+    
+    <div class="fixed inset-0 z-[-1] bg-black/50 pointer-events-none"></div>
+    
+    <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-10 relative z-10">
+      
+      <main class="flex-1 min-w-0 w-full">
+        {isMarkdown && <HeroHeader title={pageTitle} />}
+        {isMarkdown ? (
+          <article class="hifi-card">
+            <slot />
+          </article>
+        ) : (
+          <slot />
+        )}
+      </main>
+
+      <aside class="hidden lg:flex flex-col gap-8 w-72 shrink-0">
+        <ProfileCard />
+        <TocPanel toc={toc} />
+      </aside>
+
+    </div>
+
+    <MusicPlayer />
 
     <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.hifi-card').forEach(card => {
+          const canvas = document.createElement('canvas');
+          canvas.className = 'absolute inset-0 pointer-events-none rounded-[inherit] z-0';
+          card.appendChild(canvas);
+          const ctx = canvas.getContext('2d');
+          let width = canvas.width = card.offsetWidth;
+          let height = canvas.height = card.offsetHeight;
+          let stars = [];
+
+          function initStars() {
+            stars = [];
+            const count = Math.floor((width * height) / 6000); 
+            for(let i = 0; i < count; i++) stars.push({ x: Math.random() * width, y: Math.random() * height, radius: Math.random() * 1.2, speedY: Math.random() * 0.3 + 0.1, alpha: Math.random() });
+          }
+          function drawStars() {
+            ctx.clearRect(0, 0, width, height);
+            stars.forEach(star => {
+              star.alpha += (Math.random() - 0.5) * 0.05;
+              if(star.alpha < 0.1) star.alpha = 0.1; if(star.alpha > 0.8) star.alpha = 0.8;
+              ctx.fillStyle = `rgba(245, 166, 35, ${star.alpha})`;
+              ctx.beginPath(); ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2); ctx.fill();
+              star.y -= star.speedY; 
+              if (star.y < 0) { star.y = height; star.x = Math.random() * width; }
+            });
+            requestAnimationFrame(drawStars);
+          }
+          initStars(); drawStars();
+          new ResizeObserver(() => { width = canvas.width = card.offsetWidth; height = canvas.height = card.offsetHeight; initStars(); }).observe(card);
+        });
+      });
+
       document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('pre').forEach(pre => {
           if (pre.parentElement?.classList.contains('code-body')) return;
           const lang = pre.getAttribute('data-language') || 'BASH';
-          const wrapper = document.createElement('div');
-          wrapper.className = 'code-wrapper';
-          
-          const header = document.createElement('div');
-          header.className = 'code-header';
-          header.innerHTML = `
-            <div class="code-lang">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              ${lang.toUpperCase()}
-            </div>
-            <button class="copy-btn">
-              <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg>
-              <span>Copy</span>
-            </button>
-          `;
-          
-          const body = document.createElement('div');
-          body.className = 'code-body';
-          
-          pre.parentNode?.insertBefore(wrapper, pre);
-          wrapper.appendChild(header);
-          wrapper.appendChild(body);
-          body.appendChild(pre);
-
+          const wrapper = document.createElement('div'); wrapper.className = 'code-wrapper';
+          const header = document.createElement('div'); header.className = 'code-header';
+          header.innerHTML = `<div class="code-lang"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>${lang.toUpperCase()}</div><button class="copy-btn"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg><span>Copy</span></button>`;
+          const body = document.createElement('div'); body.className = 'code-body';
+          pre.parentNode?.insertBefore(wrapper, pre); wrapper.appendChild(header); wrapper.appendChild(body); body.appendChild(pre);
           const copyBtn = header.querySelector('.copy-btn');
           copyBtn?.addEventListener('click', () => {
             navigator.clipboard.writeText(pre.textContent || '').then(() => {
               copyBtn.classList.add('copied');
               copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg><span>Copied!</span>';
-              setTimeout(() => {
-                copyBtn.classList.remove('copied');
-                copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg><span>Copy</span>';
-              }, 2000);
+              setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg><span>Copy</span>'; }, 2000);
             });
           });
         });
@@ -62,64 +128,3 @@ const { title } = Astro.props;
     </script>
   </body>
 </html>
-
-<style is:global>
-  :root {
-    --bg-base: #202124; --bg-darker: #161719; --bg-lighter: #2a2b2f;
-    --text-title: #f8fafc; --text-subtitle: #e2e8f0; --text-body: #a1a1aa;
-    --text-accent: #f5a623; --text-code: #10b981;
-    --shadow-out: 10px 10px 20px var(--bg-darker), -10px -10px 20px var(--bg-lighter);
-  }
-  body { background-color: var(--bg-base); color: var(--text-body); }
-  h1 { color: var(--text-title); font-size: 2.2em; margin-top: 0; font-weight: 700; letter-spacing: 0.5px;}
-  h2 { color: var(--text-subtitle); margin-top: 40px; font-weight: 600; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  p { font-size: 1.05em; line-height: 1.8; margin-bottom: 20px;}
-  
-  a { color: var(--text-accent); text-decoration: none; border-bottom: 1px dashed rgba(245, 166, 35, 0.4); transition: all 0.3s ease; }
-  a:hover { color: #ffc107; border-bottom-style: solid; text-shadow: 0 0 8px rgba(245, 166, 35, 0.5); }
-
-  .hifi-card {
-    position: relative; background: var(--bg-base); border-radius: 20px;
-    padding: 50px; box-shadow: var(--shadow-out); border: 1px solid rgba(255, 255, 255, 0.03);
-    transition: box-shadow 0.4s ease;
-  }
-  .hifi-card:hover { box-shadow: 15px 15px 30px var(--bg-darker), -15px -15px 30px var(--bg-lighter); }
-  .hifi-card::after {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    border-radius: inherit; pointer-events: none; border: 2px solid transparent;
-    background: linear-gradient(120deg, transparent, var(--text-accent), var(--text-code), transparent) border-box;
-    background-size: 300% 100%;
-    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
-    opacity: 0; transition: opacity 0.4s ease; animation: flowGradient 3s linear infinite;
-  }
-  .hifi-card:hover::after { opacity: 1; }
-  @keyframes flowGradient { 0% { background-position: 100% 50%; } 100% { background-position: -50% 50%; } }
-
-  .code-wrapper {
-    margin: 30px 0; background: #18191c; border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.06); overflow: hidden;
-    box-shadow: inset 4px 4px 10px rgba(0,0,0,0.4);
-  }
-  .code-header {
-    display: flex; justify-content: space-between; align-items: center;
-    background: #1f2024; padding: 8px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    font-family: -apple-system, sans-serif; font-size: 12px; font-weight: 600; color: #8a8d93;
-  }
-  .code-lang { display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px; }
-  .copy-btn {
-    background: transparent; border: none; color: #8a8d93; cursor: pointer;
-    display: flex; align-items: center; gap: 6px; font-size: 12px; transition: color 0.2s; padding: 4px; border-radius: 4px;
-  }
-  .copy-btn:hover { color: var(--text-title); background: rgba(255,255,255,0.05); }
-  .copy-btn svg { width: 14px; height: 14px; fill: currentColor; }
-  .copy-btn.copied { color: var(--text-code); }
-  .code-body { padding: 16px 0; overflow-x: auto; }
-  .code-body pre { background: transparent !important; margin: 0; padding: 0 16px; font-family: 'Consolas', 'Menlo', monospace; font-size: 14px; }
-  .code-body pre code { counter-reset: step; counter-increment: step 0; }
-  .code-body pre code .line::before {
-    content: counter(step); counter-increment: step;
-    width: 1.5rem; margin-right: 1.5rem; display: inline-block;
-    text-align: right; color: #4a4d55; border-right: 1px solid rgba(255,255,255,0.05); padding-right: 10px;
-  }
-</style>

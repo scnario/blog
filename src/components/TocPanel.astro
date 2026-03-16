@@ -1,0 +1,92 @@
+---
+const { toc } = Astro.props;
+---
+<div id="toc-panel" class="sticky top-12 max-h-[calc(100vh-6rem)] overflow-y-auto no-scrollbar glass-panel group rounded-2xl p-6 transition-all duration-500 hover:bg-[#202124]/50">
+  <h3 class="text-[1.1em] font-bold text-[#f8fafc] mb-4 border-b border-white/10 pb-3 flex items-center gap-2">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+    Catalog
+  </h3>
+  
+  <ul class="space-y-3 text-[0.95em] transition-all duration-500 ease-out toc-blur group-hover:filter-none group-hover:opacity-100">
+    {toc && toc.length > 0 ? (
+      toc.map((heading: any) => (
+        <li style={`margin-left: ${(heading.depth - 2) * 12}px`}>
+          <a href={`#${heading.slug}`} data-slug={heading.slug} class="toc-link block text-[#a1a1aa] hover:text-[var(--text-accent)] hover:translate-x-1 transition-all truncate border-none">
+            {heading.text}
+          </a>
+        </li>
+      ))
+    ) : (
+      <li class="text-[#6b7280] italic">当前页面无目录</li>
+    )}
+  </ul>
+</div>
+
+<script>
+  // 💡 阅读进度追踪器 (Scroll Spy)
+  document.addEventListener('DOMContentLoaded', () => {
+    // 监听所有的 h2, h3 标签
+    const headings = Array.from(document.querySelectorAll('main h2, main h3'));
+    const tocLinks = document.querySelectorAll('.toc-link');
+    const tocPanel = document.getElementById('toc-panel');
+    
+    if (headings.length === 0 || tocLinks.length === 0) return;
+
+    let scrollTimeout = null;
+
+    const onScroll = () => {
+      if (scrollTimeout) return;
+      
+      scrollTimeout = requestAnimationFrame(() => {
+        let currentSlug = '';
+        
+        // 扫描：找出距离视口顶部最近的标题 (100px 为偏移容差)
+        for (const h of headings) {
+          const rect = h.getBoundingClientRect();
+          if (rect.top <= 100) { 
+            currentSlug = h.id;
+          } else {
+            break; 
+          }
+        }
+        
+        // 如果页面在最顶端，默认点亮第一个目录项
+        if (!currentSlug && headings.length > 0) {
+          currentSlug = headings[0].id;
+        }
+
+        // 高亮特效施加
+        tocLinks.forEach(link => {
+          // 1. 重置为默认黯淡状态
+          link.classList.remove('!text-[var(--text-accent)]', 'translate-x-2', 'font-bold');
+          
+          // 2. 找到当前正在阅读的项，赋予强烈的视觉强调
+          if (link.getAttribute('data-slug') === currentSlug) {
+            // !text 强制覆盖尾部颜色，并向右移动一点点
+            link.classList.add('!text-[var(--text-accent)]', 'translate-x-2', 'font-bold');
+            
+            // 3. 超细节：如果高亮的条目跑出了可视区，让面板自动往下滚
+            if (tocPanel) {
+              const panelRect = tocPanel.getBoundingClientRect();
+              const linkRect = link.getBoundingClientRect();
+              
+              if (linkRect.top < panelRect.top || linkRect.bottom > panelRect.bottom) {
+                tocPanel.scrollTo({
+                  top: link.offsetTop - panelRect.height / 2, 
+                  behavior: 'smooth'
+                });
+              }
+            }
+          }
+        });
+        scrollTimeout = null;
+      });
+    };
+
+    // 绑定滚动事件，passive: true 能大幅提升渲染性能
+    window.addEventListener('scroll', onScroll, { passive: true });
+    
+    // 初始化时就执行一次，确保落地高亮
+    setTimeout(onScroll, 100);
+  });
+</script>

@@ -1,0 +1,273 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="系统控制台 | twj0">
+  <article class="hifi-card !max-w-4xl mx-auto mt-10">
+    <div class="flex items-center justify-between mb-8 border-b border-white/10 pb-6">
+      <div>
+        <h1 class="!mb-2 flex items-center gap-3 text-3xl">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          系统控制台
+        </h1>
+        <p class="text-sm text-gray-400">UI 定制与物理文件覆写中心</p>
+      </div>
+      <button onclick="window.history.back()" class="text-sm px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer border-none flex items-center gap-2">
+        <span>⟵</span> 返回
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-[#f8fafc] font-medium flex items-center gap-2">🎨 强调色 (Accent Color)</span>
+          <input type="color" id="color-picker" value="#f5a623" class="w-8 h-8 rounded cursor-pointer bg-transparent border-none p-0" />
+        </div>
+      </div>
+
+      <div class="bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-[#f8fafc] font-medium flex items-center gap-2">🖼️ 全局壁纸 (Background)</span>
+        </div>
+        <select id="bg-select" class="w-full mt-2 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--text-accent)] transition-colors cursor-pointer">
+          <option value="none">纯净深色背景</option>
+          <option value="/images/pexels-adrien-casse-3330711-19542085.jpg">壁纸 1 (Adrien Casse)</option>
+          <option value="/images/pexels-dreamypixel-547115.jpg">壁纸 2 (Dreamypixel)</option>
+          <option value="/images/pexels-eberhardgross-2437299.jpg">壁纸 3 (Eberhard 2437299)</option>
+          <option value="/images/pexels-eberhardgross-3389532.jpg">壁纸 4 (Eberhard 3389532)</option>
+          <option value="/images/pexels-eberhardgross-12600615.jpg">壁纸 5 (Eberhard 12600615)</option>
+          <option value="/images/pexels-rohit1992-904269.jpg">壁纸 6 (Rohit1992)</option>
+          <option value="/images/pexels-rok-romih-1746122-3848158.jpg">壁纸 7 (Rok Romih)</option>
+        </select>
+      </div>
+
+      <div class="bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner">
+        <div class="flex justify-between items-center h-full">
+          <div>
+            <span class="text-[#f8fafc] font-medium flex items-center gap-2">✨ 星空粒子特效</span>
+            <p class="text-xs text-gray-500 mt-2">开启/关闭卡片背景流动的星光。</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="particle-toggle" class="sr-only peer" checked>
+            <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--text-accent)]"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner">
+        <div class="flex justify-between items-center mb-4 text-[#f8fafc] font-medium">
+          <span class="flex items-center gap-2">🧊 面板不透明度</span>
+          <span id="val-opacity" class="text-[var(--text-accent)] font-mono bg-black/50 px-2 py-1 rounded text-sm">0.15</span>
+        </div>
+        <input type="range" id="range-opacity" min="0" max="1" step="0.05" value="0.15" class="w-full cursor-pointer" />
+      </div>
+
+      <div class="bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner md:col-span-2">
+        <div class="flex justify-between items-center mb-4 text-[#f8fafc] font-medium">
+          <span class="flex items-center gap-2">🌫️ 毛玻璃模糊度 & 🎯 目录防打扰</span>
+        </div>
+        <div class="flex flex-col gap-4">
+          <div class="flex gap-4 items-center">
+            <span class="text-xs text-gray-400 w-24">面板模糊 (px)</span>
+            <input type="range" id="range-blur" min="0" max="40" step="1" value="6" class="flex-1 cursor-pointer" />
+            <span id="val-blur" class="text-[var(--text-accent)] font-mono bg-black/50 px-2 py-1 rounded text-xs w-10 text-center">6</span>
+          </div>
+          <div class="flex gap-4 items-center">
+            <span class="text-xs text-gray-400 w-24">目录失焦 (px)</span>
+            <input type="range" id="range-toc" min="0" max="10" step="0.5" value="2.5" class="flex-1 cursor-pointer" />
+            <span id="val-toc" class="text-[var(--text-accent)] font-mono bg-black/50 px-2 py-1 rounded text-xs w-10 text-center">2.5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-black/20 p-6 rounded-xl border border-white/5 shadow-inner md:col-span-2">
+        <h3 class="text-[#f8fafc] font-medium flex items-center gap-2 mb-6">👤 个性化头像更换 (仅支持 2MB 内图片)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="flex gap-4 items-center">
+            <div id="preview-main" class="w-16 h-16 rounded-full bg-cover bg-center border-2 border-white/20 shadow-lg shrink-0" style="background-image: var(--avatar-main, url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop'))"></div>
+            <div class="flex-1">
+              <p class="text-xs text-gray-400 mb-2">主头像 (Main Avatar)</p>
+              <input type="file" id="upload-main" accept="image/*" class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-[var(--text-accent)] file:text-white hover:file:brightness-110 cursor-pointer mb-2" />
+              <button id="del-main" class="text-xs text-red-400 hover:text-red-300 transition-colors border-none bg-transparent cursor-pointer p-0">🗑️ 恢复默认</button>
+            </div>
+          </div>
+          <div class="flex gap-4 items-center">
+            <div id="preview-sub" class="w-16 h-16 rounded-full bg-cover bg-center border-2 border-white/20 shadow-lg shrink-0" style="background-image: var(--avatar-sub, url('https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=100&auto=format&fit=crop'))"></div>
+            <div class="flex-1">
+              <p class="text-xs text-gray-400 mb-2">副挂件 (Sub Badge)</p>
+              <input type="file" id="upload-sub" accept="image/*" class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-[var(--text-accent)] file:text-white hover:file:brightness-110 cursor-pointer mb-2" />
+              <button id="del-sub" class="text-xs text-red-400 hover:text-red-300 transition-colors border-none bg-transparent cursor-pointer p-0">🗑️ 恢复默认</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-10 pt-6 border-t border-white/10 flex flex-col items-end gap-4">
+      <p class="text-sm text-gray-400">调整满意后点击保存，配置及上传的头像图片将被直接写入本地工程目录。</p>
+      <button id="save-to-file-btn" class="px-8 py-3 bg-[var(--text-accent)] text-white font-bold rounded-xl shadow-lg hover:brightness-110 transition-all active:scale-95 flex items-center gap-2 border-none cursor-pointer">
+        <span>💾 写入全部配置与图片</span>
+      </button>
+    </div>
+  </article>
+
+  <style>
+    input[type=range] { accent-color: var(--text-accent); }
+    select option { background-color: #202124; color: #fff; }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const rangeOpacity = document.getElementById('range-opacity') as HTMLInputElement;
+      const rangeBlur = document.getElementById('range-blur') as HTMLInputElement;
+      const rangeToc = document.getElementById('range-toc') as HTMLInputElement;
+      const colorPicker = document.getElementById('color-picker') as HTMLInputElement;
+      const bgSelect = document.getElementById('bg-select') as HTMLSelectElement;
+      const particleToggle = document.getElementById('particle-toggle') as HTMLInputElement;
+
+      const valOpacity = document.getElementById('val-opacity');
+      const valBlur = document.getElementById('val-blur');
+      const valToc = document.getElementById('val-toc');
+      const saveBtn = document.getElementById('save-to-file-btn');
+
+      const rootStyles = getComputedStyle(document.documentElement);
+      const op = localStorage.getItem('hifi-opacity') || rootStyles.getPropertyValue('--glass-opacity').trim() || '0.15';
+      const bl = localStorage.getItem('hifi-blur') || rootStyles.getPropertyValue('--glass-blur').trim().replace('px', '') || '6';
+      const tc = localStorage.getItem('hifi-toc') || rootStyles.getPropertyValue('--toc-text-blur').trim().replace('px', '') || '2.5';
+      const color = localStorage.getItem('hifi-color') || rootStyles.getPropertyValue('--text-accent').trim() || '#f5a623';
+      const prt = localStorage.getItem('hifi-particles') !== 'none';
+      
+      let bg = localStorage.getItem('hifi-bg') || rootStyles.getPropertyValue('--bg-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim() || 'none';
+      if (bg.startsWith('url(')) { bg = bg.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim(); localStorage.setItem('hifi-bg', bg); }
+
+      // 💡 净化头像缓存中的 url()
+      let am = localStorage.getItem('hifi-avatar-main');
+      let as = localStorage.getItem('hifi-avatar-sub');
+      if (am && am.startsWith('url(')) { am = am.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim(); localStorage.setItem('hifi-avatar-main', am); }
+      if (as && as.startsWith('url(')) { as = as.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim(); localStorage.setItem('hifi-avatar-sub', as); }
+
+      if(rangeOpacity && valOpacity) { rangeOpacity.value = op; valOpacity.textContent = op; }
+      if(rangeBlur && valBlur) { rangeBlur.value = bl; valBlur.textContent = bl; }
+      if(rangeToc && valToc) { rangeToc.value = tc; valToc.textContent = tc; }
+      if(colorPicker) colorPicker.value = color;
+      if(particleToggle) particleToggle.checked = prt;
+      if(bgSelect) {
+        const optionExists = Array.from(bgSelect.options).some(opt => opt.value === bg);
+        bgSelect.value = optionExists ? bg : 'none';
+      }
+
+      function updateStyle(prop: string, value: string, key: string, suffix = '') {
+        document.documentElement.style.setProperty(prop, value + suffix);
+        localStorage.setItem(key, value);
+      }
+
+      rangeOpacity?.addEventListener('input', (e) => { const v = (e.target as HTMLInputElement).value; if(valOpacity) valOpacity.textContent = v; updateStyle('--glass-opacity', v, 'hifi-opacity'); });
+      rangeBlur?.addEventListener('input', (e) => { const v = (e.target as HTMLInputElement).value; if(valBlur) valBlur.textContent = v; updateStyle('--glass-blur', v, 'hifi-blur', 'px'); });
+      rangeToc?.addEventListener('input', (e) => { const v = (e.target as HTMLInputElement).value; if(valToc) valToc.textContent = v; updateStyle('--toc-text-blur', v, 'hifi-toc', 'px'); });
+      colorPicker?.addEventListener('input', (e) => { const v = (e.target as HTMLInputElement).value; updateStyle('--text-accent', v, 'hifi-color'); });
+      bgSelect?.addEventListener('change', (e) => { 
+        const url = (e.target as HTMLSelectElement).value;
+        if (url === 'none' || !url) { 
+          document.documentElement.style.setProperty('--bg-image', 'none'); localStorage.setItem('hifi-bg', 'none'); 
+        } else { 
+          document.documentElement.style.setProperty('--bg-image', `url('${url}')`); localStorage.setItem('hifi-bg', url); 
+        }
+      });
+      particleToggle?.addEventListener('change', (e) => {
+        const isChecked = (e.target as HTMLInputElement).checked;
+        updateStyle('--show-particles', isChecked ? 'block' : 'none', 'hifi-particles');
+      });
+
+      // ================= 头像处理逻辑 =================
+      async function handleAvatarUpload(inputId: string, target: string, previewId: string) {
+        const input = document.getElementById(inputId) as HTMLInputElement;
+        input.addEventListener('change', (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) { alert('图片太大了！请上传 2MB 以内的图片。'); input.value = ''; return; }
+
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const base64 = event.target?.result;
+            try {
+              const res = await fetch('/api/upload-avatar', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'upload', target, base64 }) 
+              });
+              const result = await res.json();
+              if (result.success) {
+                 const url = result.path;
+                 // 💡 直接设置样式，只将纯路径存入 LocalStorage！
+                 document.documentElement.style.setProperty(`--avatar-${target}`, `url('${url}')`);
+                 localStorage.setItem(`hifi-avatar-${target}`, url);
+                 document.getElementById(previewId)!.style.backgroundImage = `url('${url}')`;
+              } else { alert(`上传失败: ${result.error}`); }
+            } catch (err) { alert('请求失败！请确认已重启终端。'); }
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function handleAvatarDelete(btnId: string, target: string, previewId: string) {
+        document.getElementById(btnId)?.addEventListener('click', async () => {
+          try {
+            const res = await fetch('/api/upload-avatar', { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'delete', target }) 
+            });
+            const result = await res.json();
+            if (result.success) {
+               localStorage.removeItem(`hifi-avatar-${target}`);
+               document.documentElement.style.removeProperty(`--avatar-${target}`); 
+               document.getElementById(previewId)!.style.backgroundImage = ''; 
+               (document.getElementById(`upload-${target}`) as HTMLInputElement).value = '';
+               alert('已恢复默认头像！请点击保存按钮写入配置。');
+            }
+          } catch (err) {}
+        });
+      }
+
+      handleAvatarUpload('upload-main', 'main', 'preview-main');
+      handleAvatarUpload('upload-sub', 'sub', 'preview-sub');
+      handleAvatarDelete('del-main', 'main', 'preview-main');
+      handleAvatarDelete('del-sub', 'sub', 'preview-sub');
+
+      // ================= 保存逻辑 =================
+      saveBtn?.addEventListener('click', async () => {
+        const bgVal = bgSelect?.value;
+        const payload = {
+          opacity: rangeOpacity?.value || '0.15',
+          blur: rangeBlur?.value || '6',
+          toc: rangeToc?.value || '2.5',
+          color: colorPicker?.value || '#f5a623',
+          bg: bgVal === 'none' ? 'none' : bgVal,
+          particles: particleToggle?.checked,
+          avatarMain: localStorage.getItem('hifi-avatar-main') || '',
+          avatarSub: localStorage.getItem('hifi-avatar-sub') || ''
+        };
+
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span>⏳ 正在全面写入...</span>';
+
+        try {
+          const response = await fetch('/api/save-theme', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload) 
+          });
+          const res = await response.json();
+          if (res.success) {
+            saveBtn.innerHTML = '<span>✅ 源码与图片写入成功！</span>';
+            saveBtn.classList.add('!bg-[#10b981]');
+            setTimeout(() => { saveBtn.innerHTML = originalText; saveBtn.classList.remove('!bg-[#10b981]'); }, 2000);
+          } else { alert(`写入错误: ${res.error}`); saveBtn.innerHTML = originalText; }
+        } catch (error) {
+          alert('写入失败！请确认已在 astro.config.mjs 注入后门插件，且正在本地重启运行 npm run dev。');
+          saveBtn.innerHTML = originalText;
+        }
+      });
+    });
+  </script>
+</Layout>
