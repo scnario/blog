@@ -1,6 +1,6 @@
 ---
 layout: '../layouts/Layout.astro'
-title: "Vaultwarden 私有化部署完全指南"
+title: "Vaultwarden 完全部署指南"
 date: "2026-03-16"
 ---
 
