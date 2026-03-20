@@ -1,0 +1,68 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import pb from '../../lib/pb.ts';
+import { marked } from 'marked';
+
+const { slug } = Astro.params;
+
+let post = null;
+try {
+  post = await pb.collection('posts').getFirstListItem(`slug="${slug}" && is_published=true`);
+} catch (error) {
+  return Astro.redirect('/404');
+}
+
+// ==========================================
+// 🚀 核心管线：拦截并重塑 Markdown 数据流
+// ==========================================
+
+// 1. 准备一个空数组，用来收集传给右侧 TocPanel 的目录数据
+const extractedHeadings = [];
+
+// 2. 定制 marked 解析器，拦截每一个标题 (Heading) 的生成
+const renderer = new marked.Renderer();
+
+// 兼容不同版本的 marked API
+renderer.heading = function (textOrObj, level, raw) {
+  // 适配 marked v13+ 和旧版本的参数差异
+  const actualText = typeof textOrObj === 'object' ? textOrObj.text : textOrObj;
+  const actualLevel = typeof textOrObj === 'object' ? textOrObj.depth : level;
+  
+  // 生成一个优雅的纯净 Slug（支持中文），作为点击跳转的锚点
+  const anchor = actualText.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^\w\u4e00-\u9fa5-]/g, '');
+  
+  // 将标题数据推入我们准备好的数组
+  extractedHeadings.push({
+    depth: actualLevel,
+    slug: anchor,
+    text: actualText
+  });
+  
+  // 返回修改后的 HTML 标签，注入 id，并加上 scroll-mt 留出顶部呼吸空间
+  return `<h${actualLevel} id="${anchor}" class="scroll-mt-24 text-cyan-400 font-bold mt-8 mb-4">${actualText}</h${actualLevel}>\n`;
+};
+
+// 应用我们的定制解析器
+marked.use({ renderer });
+
+// 3. 将正文编译为 HTML
+const parsedContent = marked.parse(post.content);
+
+// 4. 伪造前置数据，骗过 Layout 骨架，重新点亮 HeroHeader
+const mockFrontmatter = {
+  title: post.title,
+  date: post.created,
+};
+---
+
+<Layout title={`${post.title} | Matrix`} frontmatter={mockFrontmatter} headings={extractedHeadings}>
+  
+  <div class="mb-6">
+    <a href="/matrix" class="text-cyan-600 hover:text-cyan-400 inline-block transition-colors font-mono">
+      &lt; 返回矩阵节点
+    </a>
+  </div>
+
+  <div class="prose prose-invert prose-cyan max-w-none text-gray-300 leading-relaxed font-sans prose-pre:bg-black/50 prose-pre:border prose-pre:border-gray-800" set:html={parsedContent} />
+  
+</Layout>

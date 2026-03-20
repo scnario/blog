@@ -1,24 +1,27 @@
-# === 阶段一：使用 Node 构建静态文件 ===
-# 【修改这里】：将 20 升级为 22
+# --- 构建阶段 ---
 FROM node:22-alpine AS builder
 WORKDIR /app
-
-# 复制 package.json 并安装依赖
 COPY package*.json ./
 RUN npm install
-
-# 复制所有源代码并执行 Astro 编译
 COPY . .
+# 这里执行 astro build 时，因为配了 output: 'server'，它会编译出一个 Node.js 服务端程序
 RUN npm run build
 
-# === 阶段二：使用 Nginx 极速托管 ===
-FROM nginx:alpine
+# --- 运行阶段 ---
+FROM node:22-alpine AS runner
+WORKDIR /app
+# 设置为生产环境
+ENV NODE_ENV=production
+# 设置主机和端口，匹配你 docker-compose 里的 8080 映射
+ENV HOST=0.0.0.0
+ENV PORT=80
 
-# 将阶段一编译好的纯静态文件 (dist目录) 复制到 Nginx 的默认托管目录下
-COPY --from=builder /app/dist /usr/share/nginx/html
+# 只拷贝构建好的产物和 node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
 
-# 暴露 80 端口（容器内部端口）
 EXPOSE 80
 
-# 以前台模式启动 Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# 启动 Astro 的动态服务端程序
+CMD ["node", "./dist/server/entry.mjs"]

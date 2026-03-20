@@ -4,11 +4,43 @@ import HeroHeader from '../components/HeroHeader.astro';
 import ProfileCard from '../components/ProfileCard.astro';
 import TocPanel from '../components/TocPanel.astro';
 import MusicPlayer from '../components/MusicPlayer.astro';
+import pb from '../lib/pb.ts';
 
 const { title, frontmatter, headings = [] } = Astro.props;
 const pageTitle = title || frontmatter?.title || '数字花园';
 const toc = headings.filter((h: any) => h.depth <= 3);
 const isMarkdown = !!frontmatter; 
+
+// 1. 服务端获取 PocketBase 配置
+let settings = null;
+try {
+  const result = await pb.collection('settings').getList(1, 1, { sort: '-created' });
+  if (result.items.length > 0) {
+    settings = result.items[0];
+  }
+} catch (error) {
+  console.log("配置读取失败或表为空");
+}
+
+// 2. 将数据映射为变量，并提供安全的回退值
+const themeColor = settings?.theme_color || '#00ffcc';
+const glassOpacity = settings?.glass_opacity ?? 0.8;
+const glassBlur = settings?.glass_blur ?? 10;
+const tocTextBlur = settings?.toc_text_blur ?? 5;
+const showParticles = settings?.particles_enabled ? 'block' : 'none';
+
+// 提取图片 URL 的辅助函数
+const getPbUrl = (record: any, filename: string) => 
+  record && filename ? pb.files.getUrl(record, filename) : null;
+
+// 背景图处理：如果数据库有则用数据库的，没有则用你原本的 Unsplash 默认图
+const bgImageFromDb = getPbUrl(settings, settings?.bg_image);
+const bgUrl = bgImageFromDb 
+  ? `url('${bgImageFromDb}')` 
+  : "url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')";
+
+const avatarMain = getPbUrl(settings, settings?.avatar_main) ? `url('${getPbUrl(settings, settings.avatar_main)}')` : 'none';
+const avatarSub = getPbUrl(settings, settings?.avatar_sub) ? `url('${getPbUrl(settings, settings.avatar_sub)}')` : 'none';
 ---
 
 <!doctype html>
@@ -18,36 +50,32 @@ const isMarkdown = !!frontmatter;
     <meta name="viewport" content="width=device-width" />
     <title>{pageTitle}</title>
     
-    <script is:inline>
-      const op = localStorage.getItem('hifi-opacity');
-      const bl = localStorage.getItem('hifi-blur');
-      const tc = localStorage.getItem('hifi-toc');
-      const bg = localStorage.getItem('hifi-bg');
-      const color = localStorage.getItem('hifi-color');
-      const prt = localStorage.getItem('hifi-particles');
-      
-      let am = localStorage.getItem('hifi-avatar-main');
-      let as = localStorage.getItem('hifi-avatar-sub');
-
-      // 💡 终极修复：净化头像的套娃数据
-      if (am && am.startsWith('url(')) am = am.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim();
-      if (as && as.startsWith('url(')) as = as.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '').trim();
-
-      if (op !== null) document.documentElement.style.setProperty('--glass-opacity', op);
-      if (bl !== null) document.documentElement.style.setProperty('--glass-blur', bl + 'px');
-      if (tc !== null) document.documentElement.style.setProperty('--toc-text-blur', tc + 'px');
-      if (bg !== null && bg !== 'none') document.documentElement.style.setProperty('--bg-image', `url('${bg}')`);
-      if (color !== null) document.documentElement.style.setProperty('--text-accent', color);
-      if (prt !== null) document.documentElement.style.setProperty('--show-particles', prt);
-      
-      // 只有在路径纯净的情况下，才套上 url()
-      if (am) document.documentElement.style.setProperty('--avatar-main', `url('${am}')`);
-      if (as) document.documentElement.style.setProperty('--avatar-sub', `url('${as}')`);
-    </script>
+    <style is:global define:vars={{ 
+      themeColor, 
+      glassOpacity, 
+      glassBlur, 
+      tocTextBlur,
+      showParticles, 
+      bgUrl, 
+      avatarMain, 
+      avatarSub 
+    }}>
+      :root {
+        --text-accent: var(--themeColor);
+        --glass-opacity: var(--glassOpacity);
+        --glass-bg: rgba(32, 33, 36, var(--glassOpacity));
+        --glass-blur: calc(var(--glassBlur) * 1px);
+        --toc-text-blur: calc(var(--tocTextBlur) * 1px);
+        --show-particles: var(--showParticles);
+        --bg-image: var(--bgUrl);
+        --avatar-main: var(--avatarMain);
+        --avatar-sub: var(--avatarSub);
+      }
+    </style>
   </head>
   
   <body class="antialiased min-h-screen py-12 px-6 relative overflow-x-hidden bg-cover bg-fixed bg-center" 
-        style="background-image: var(--bg-image, url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'));">
+        style="background-image: var(--bg-image);">
     
     <div class="fixed inset-0 z-[-1] bg-black/50 pointer-events-none"></div>
     
@@ -74,6 +102,7 @@ const isMarkdown = !!frontmatter;
     <MusicPlayer />
 
     <script>
+      // 星空 Canvas 特效逻辑保持完全不变
       document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.hifi-card').forEach(card => {
           const canvas = document.createElement('canvas');
@@ -106,6 +135,7 @@ const isMarkdown = !!frontmatter;
         });
       });
 
+      // 代码块高亮逻辑保持完全不变
       document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('pre').forEach(pre => {
           if (pre.parentElement?.classList.contains('code-body')) return;

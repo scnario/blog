@@ -1,0 +1,46 @@
+---
+// 引入你刚刚修好的 Layout 骨架
+import Layout from '../../layouts/Layout.astro';
+import pb from '../../lib/pb.ts';
+
+// 【SSR 实时获取】每次打开这个页面，都会去数据库实时拉取最新的笔记
+let posts = [];
+try {
+  // 从 posts 表拉取已发布的文章，按时间倒序
+  const records = await pb.collection('posts').getList(1, 50, {
+    filter: 'is_published = true',
+    sort: '-created',
+  });
+  posts = records.items;
+} catch (error) {
+  console.error("读取笔记列表失败:", error);
+}
+---
+
+<Layout title="知识矩阵 | Matrix">
+  <div class="mb-8">
+    <h1 class="text-4xl font-bold text-cyan-400 tracking-widest mb-2">>_ SYSTEM.MATRIX_</h1>
+    <p class="text-gray-500">已同步数据库中的云端笔记数据...</p>
+  </div>
+
+  <div class="flex flex-col gap-6">
+    {posts.length === 0 ? (
+      <div class="p-6 border border-gray-800 bg-black/40 text-gray-500">
+        [ SYSTEM ] 当前数据库无可见记录。
+      </div>
+    ) : (
+      posts.map((post) => (
+        <a href={`/matrix/${post.slug}`} 
+           class="block p-6 bg-black/40 backdrop-blur-md border border-gray-800 hover:border-cyan-500 transition-all duration-300 group">
+          <h2 class="text-2xl font-bold text-gray-200 group-hover:text-cyan-300 mb-2">
+            {post.title}
+          </h2>
+          <div class="text-sm text-gray-500 flex items-center gap-4">
+            <span>> STATUS: ONLINE</span>
+            <span>> SYNC_DATE: {new Date(post.created).toLocaleDateString()}</span>
+          </div>
+        </a>
+      ))
+    )}
+  </div>
+</Layout>
