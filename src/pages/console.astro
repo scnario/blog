@@ -1,143 +1,986 @@
 ---
+/**
+ * 控制台 — 5 tab 管理面板
+ * 文章 & 笔记 / 日记 / 站点设置 / 主题 / 布局
+ *
+ * 设计要点：
+ * - 登录态由 pb.authStore 维持（localStorage）；服务端不参与
+ * - tab 切换：URL hash + JS 切 .active 类（不用框架）
+ * - 所有写操作走客户端 PB SDK；写完调 /api/invalidate-cache 让 SSR 缓存失效
+ * - schema 缺字段时 UI 应仍能渲染（写入失败给提示而不是崩）
+ */
 import Layout from '../layouts/Layout.astro';
-// 注意：服务端不需要在这里连数据库，因为我们要让浏览器客户端直接和数据库通信
+import { listPresets } from '../lib/bento-presets';
+import { THEMES } from '../lib/theme';
+
+const presets = listPresets();
+const themes = Object.values(THEMES);
 ---
 
-<Layout title="主控台 | SYSTEM.CONSOLE">
-  <div class="max-w-3xl mx-auto mt-10 relative z-10">
-    
-    <div class="mb-8 border-b border-gray-800 pb-4">
-      <h1 class="text-4xl font-bold text-pink-500 tracking-widest animate-pulse">>_ OVERRIDE_CONSOLE</h1>
-      <p class="text-gray-500 font-mono mt-2">身份验证与数据注入协议已就绪...</p>
-    </div>
-
-    <div id="login-section" class="p-8 border border-pink-900/50 bg-black/60 backdrop-blur-md hifi-card transition-all">
-      <h2 class="text-xl text-pink-400 mb-6">> 验证管理员权限</h2>
-      <div class="flex flex-col gap-4">
-        <input type="email" id="email" placeholder="ADMIN_EMAIL" class="bg-gray-900/50 border border-gray-700 text-cyan-300 px-4 py-3 focus:outline-none focus:border-pink-500 font-mono">
-        <input type="password" id="password" placeholder="PASSWORD" class="bg-gray-900/50 border border-gray-700 text-cyan-300 px-4 py-3 focus:outline-none focus:border-pink-500 font-mono">
-        <button id="login-btn" class="mt-4 bg-pink-600/20 border border-pink-500 text-pink-400 px-6 py-3 hover:bg-pink-600/40 hover:text-white transition-colors font-bold tracking-widest">
-          [ INITIATE_LOGIN ]
-        </button>
+<Layout title="控制台 | 管理面板" showSidebar={false} showToc={false}>
+  <div class="console-root">
+    <!-- 未登录 -->
+    <section id="login-section" class="login-card">
+      <div class="login-head">
+        <div class="mono kicker">CONSOLE / AUTH</div>
+        <h1>登录管理控制台</h1>
+        <p class="muted">使用 PocketBase 超级管理员账号登录。</p>
       </div>
-      <div id="login-error" class="text-red-500 mt-4 text-sm hidden font-mono"></div>
-    </div>
-
-    <div id="editor-section" class="hidden p-8 border border-cyan-900/50 bg-black/60 backdrop-blur-md hifi-card transition-all">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl text-cyan-400">> 建立新区块 (New Record)</h2>
-        <button id="logout-btn" class="text-gray-500 hover:text-red-400 text-sm font-mono">[ LOGOUT ]</button>
+      <div class="form">
+        <label>邮箱
+          <input type="email" id="email" placeholder="admin@example.com" autocomplete="username" />
+        </label>
+        <label>密码
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+        </label>
+        <button id="login-btn" class="btn-primary">登录</button>
+        <div id="login-error" class="error" style="display:none"></div>
       </div>
-      
-      <div class="flex flex-col gap-6">
-        <div class="flex gap-4">
-          <input type="text" id="post-title" placeholder="文章标题 (Title)" class="flex-1 bg-gray-900/50 border border-gray-700 text-cyan-300 px-4 py-3 focus:outline-none focus:border-cyan-500 font-mono">
-          <input type="text" id="post-slug" placeholder="URL标识 (Slug, 例如: my-diary)" class="w-1/3 bg-gray-900/50 border border-gray-700 text-gray-400 px-4 py-3 focus:outline-none focus:border-cyan-500 font-mono">
+    </section>
+
+    <!-- 已登录 -->
+    <section id="admin-section" style="display:none">
+      <header class="admin-head">
+        <div>
+          <div class="mono kicker">CONSOLE</div>
+          <h1>管理控制台</h1>
+          <p class="muted" id="admin-email">—</p>
         </div>
-        
-        <textarea id="post-content" rows="12" placeholder="在此输入 Markdown 信号..." class="bg-gray-900/50 border border-gray-700 text-gray-300 px-4 py-3 focus:outline-none focus:border-cyan-500 font-mono resize-y"></textarea>
-        
-        <div class="flex items-center justify-between mt-2">
-          <label class="flex items-center gap-2 text-gray-400 cursor-pointer">
-            <input type="checkbox" id="post-publish" checked class="w-4 h-4 accent-cyan-500">
-            <span class="font-mono text-sm">> 立即发布 (is_published)</span>
-          </label>
-          
-          <button id="submit-btn" class="bg-cyan-600/20 border border-cyan-500 text-cyan-400 px-8 py-3 hover:bg-cyan-600/40 hover:text-white transition-colors font-bold tracking-widest">
-            [ UPLOAD_DATA ]
-          </button>
+        <button id="logout-btn" class="btn-ghost">登出</button>
+      </header>
+
+      <nav class="tabs">
+        <a href="#posts" data-tab="posts" class="tab active">📝 文章 & 笔记</a>
+        <a href="#diary" data-tab="diary" class="tab">📔 日记</a>
+        <a href="#settings" data-tab="settings" class="tab">⚙️ 站点设置</a>
+        <a href="#theme" data-tab="theme" class="tab">🎨 主题</a>
+        <a href="#layout" data-tab="layout" class="tab">🧩 布局</a>
+      </nav>
+
+      <!-- ========== TAB: POSTS ========== -->
+      <div class="tab-panel active" data-panel="posts">
+        <div class="panel-head">
+          <h2>文章 & 笔记</h2>
+          <p class="muted">同一张 <code>posts</code> 表，靠 <code>type</code> 字段区分长短形态。</p>
+        </div>
+
+        <div class="card">
+          <h3>新建</h3>
+          <div class="form-grid">
+            <label class="span-2">标题
+              <input type="text" id="post-title" placeholder="给一篇内容起个名字" />
+            </label>
+            <label>Slug
+              <input type="text" id="post-slug" placeholder="my-first-note" />
+            </label>
+            <label>类型
+              <select id="post-type">
+                <option value="article">📰 长文 article</option>
+                <option value="note">💡 笔记 note</option>
+              </select>
+            </label>
+            <label>标签
+              <input type="text" id="post-tag" placeholder="技术 / 杂记 / 灵感 …" />
+            </label>
+            <label>Emoji
+              <input type="text" id="post-emoji" placeholder="📝" maxlength="4" />
+            </label>
+            <label class="span-2">摘要 (Bento 卡 / 笔记正文)
+              <textarea id="post-excerpt" rows="2" placeholder="一两句话概括"></textarea>
+            </label>
+            <label class="span-2">正文 (Markdown)
+              <textarea id="post-content" rows="10" placeholder="# 开始写吧…"></textarea>
+            </label>
+            <label class="checkbox span-2">
+              <input type="checkbox" id="post-publish" checked />
+              <span>立即发布 <code>is_published = true</code></span>
+            </label>
+          </div>
+          <div class="row">
+            <button id="post-save-btn" class="btn-primary">保存</button>
+            <span id="post-status" class="muted"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>已有内容 <button id="post-refresh-btn" class="btn-ghost small">刷新</button></h3>
+          <div id="post-list" class="list">
+            <div class="muted small">登录后自动加载…</div>
+          </div>
         </div>
       </div>
-      <div id="submit-status" class="mt-4 text-sm font-mono hidden"></div>
-    </div>
 
+      <!-- ========== TAB: DIARY ========== -->
+      <div class="tab-panel" data-panel="diary">
+        <div class="panel-head">
+          <h2>日记</h2>
+          <p class="muted">独立 <code>diaries</code> 表。默认 <strong>私密</strong>，主动勾选「公开」才上墙。</p>
+        </div>
+
+        <div class="card warm">
+          <h3>新建日记</h3>
+          <div class="form-grid">
+            <label class="span-2">标题
+              <input type="text" id="diary-title" placeholder="今天的小标题…" />
+            </label>
+            <label>Slug
+              <input type="text" id="diary-slug" placeholder="2026-04-25-evening" />
+            </label>
+            <label>日期
+              <input type="date" id="diary-date" />
+            </label>
+            <label>心情
+              <select id="diary-mood">
+                <option value="平静">😌 平静</option>
+                <option value="兴奋">🤩 兴奋</option>
+                <option value="低落">😔 低落</option>
+                <option value="专注">🧐 专注</option>
+              </select>
+            </label>
+            <label>天气
+              <input type="text" id="diary-weather" placeholder="晴 / 多云 / 雨…" />
+            </label>
+            <label class="span-2">正文
+              <textarea id="diary-content" rows="10" placeholder="写点什么…"></textarea>
+            </label>
+            <label class="checkbox span-2 highlight-private">
+              <input type="checkbox" id="diary-public" />
+              <span>🔓 公开（默认私密）— 勾选后才会出现在 <code>/diary</code></span>
+            </label>
+          </div>
+          <div class="row">
+            <button id="diary-save-btn" class="btn-primary">保存</button>
+            <span id="diary-status" class="muted"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>已有日记 <button id="diary-refresh-btn" class="btn-ghost small">刷新</button></h3>
+          <div id="diary-list" class="list">
+            <div class="muted small">登录后自动加载…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TAB: SETTINGS ========== -->
+      <div class="tab-panel" data-panel="settings">
+        <div class="panel-head">
+          <h2>站点设置</h2>
+          <p class="muted">所有字段保存到 <code>settings</code> 表第一条记录；前端 5 分钟缓存。</p>
+        </div>
+
+        <div class="card">
+          <h3>个人</h3>
+          <div class="form-grid">
+            <label>昵称
+              <input type="text" id="set-nickname" placeholder="twj0" />
+            </label>
+            <label>Tagline
+              <input type="text" id="set-tagline" placeholder="Day by day, life by life." />
+            </label>
+            <label class="span-2">简介
+              <textarea id="set-bio" rows="2" placeholder="介绍一下自己…"></textarea>
+            </label>
+            <label>GitHub URL
+              <input type="text" id="set-github" placeholder="https://github.com/xxx" />
+            </label>
+            <label>Email
+              <input type="text" id="set-email" placeholder="hello@example.com" />
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>音乐播放器</h3>
+          <div class="form-grid">
+            <label class="span-2">音频 URL
+              <input type="text" id="set-music-url" placeholder="https://…/song.mp3" />
+            </label>
+            <label>曲名
+              <input type="text" id="set-music-title" />
+            </label>
+            <label>艺术家
+              <input type="text" id="set-music-artist" />
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>视觉变量</h3>
+          <div class="form-grid">
+            <label>主题色
+              <input type="color" id="set-theme-color" value="#A8E6CF" />
+            </label>
+            <label>玻璃透明 (0–1)
+              <input type="number" step="0.05" min="0" max="1" id="set-glass-opacity" />
+            </label>
+            <label>玻璃模糊 (px)
+              <input type="number" min="0" max="40" id="set-glass-blur" />
+            </label>
+            <label>TOC 文字模糊 (px)
+              <input type="number" min="0" max="20" id="set-toc-blur" />
+            </label>
+            <label class="checkbox span-2">
+              <input type="checkbox" id="set-particles" />
+              <span>启用粒子背景</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="settings-save-btn" class="btn-primary">保存站点设置</button>
+          <span id="settings-status" class="muted"></span>
+        </div>
+      </div>
+
+      <!-- ========== TAB: THEME ========== -->
+      <div class="tab-panel" data-panel="theme">
+        <div class="panel-head">
+          <h2>主题</h2>
+          <p class="muted">cookie <code>site_theme</code> 优先级 &gt; PB <code>active_theme</code> &gt; bento 默认。</p>
+        </div>
+
+        <div class="card">
+          <h3>全站默认主题（写入 PB）</h3>
+          <div class="theme-grid">
+            {themes.map(t => (
+              <label class="theme-card">
+                <input type="radio" name="active-theme" value={t.slug} />
+                <div>
+                  <div class="theme-name">{t.icon} {t.name}</div>
+                  <div class="muted small">{t.tagline}</div>
+                  <div class="muted small mono">支持: {t.supports.join(' / ')}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <div class="row">
+            <button id="theme-save-btn" class="btn-primary">保存默认主题</button>
+            <span id="theme-status" class="muted"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>当前浏览器 cookie 主题</h3>
+          <p class="muted small">仅影响这个浏览器；右下角浮动切换器也会修改这里。</p>
+          <div class="row" id="cookie-theme-row">
+            <span>当前 cookie：</span>
+            <code id="cookie-theme-current">—</code>
+            <button id="cookie-theme-clear" class="btn-ghost small">清除 cookie，回退到 PB 默认</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TAB: LAYOUT ========== -->
+      <div class="tab-panel" data-panel="layout">
+        <div class="panel-head">
+          <h2>Bento 布局</h2>
+          <p class="muted">从预设里选；具体瓷砖顺序见 <code>src/lib/bento-presets.ts</code>。</p>
+        </div>
+
+        <div class="card">
+          <h3>选择预设</h3>
+          <div class="preset-grid">
+            {presets.map(p => (
+              <label class="preset-card">
+                <input type="radio" name="bento-preset" value={p.id} />
+                <div>
+                  <div class="preset-name">{p.name}</div>
+                  <div class="muted small">{p.tagline}</div>
+                  <div class="mono small" style="margin-top:8px;color:#8A8A94">
+                    {p.tiles.map(t => t.id).join(' › ')}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <div class="row">
+            <button id="layout-save-btn" class="btn-primary">保存布局</button>
+            <span id="layout-status" class="muted"></span>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
+
+  <style>
+    .console-root { max-width: 980px; margin: 0 auto; padding: 8px 4px 80px; }
+
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .kicker { font-size: 11px; color: #8A8A94; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .muted { color: #8A8A94; }
+    .small { font-size: 12px; }
+    .error {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #B91C1C;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    /* Login */
+    .login-card {
+      max-width: 440px;
+      margin: 60px auto;
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 36px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.08);
+    }
+    .login-head h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 4px 0;
+    }
+    .login-card .form { display: grid; gap: 14px; margin-top: 20px; }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      color: #52525B;
+      font-weight: 500;
+    }
+    label.checkbox {
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    label.checkbox.highlight-private {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255, 224, 130, 0.18);
+      border: 1px dashed rgba(255, 184, 0, 0.4);
+    }
+    input[type="text"], input[type="email"], input[type="password"], input[type="date"],
+    input[type="number"], select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #E4E4E7;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #FAFAF7;
+      color: #1A1A1F;
+      font-family: inherit;
+      transition: border-color 160ms;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #6B5BFF;
+      background: #FFFFFF;
+    }
+    input[type="color"] {
+      width: 56px;
+      height: 36px;
+      border: 1px solid #E4E4E7;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+      padding: 2px;
+    }
+
+    .btn-primary {
+      background: #1A1A1F;
+      color: #FFFFFF;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 160ms, box-shadow 160ms;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    .btn-ghost {
+      background: transparent;
+      color: #52525B;
+      border: 1px solid #E4E4E7;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 160ms, color 160ms;
+    }
+    .btn-ghost:hover { background: #F4F4F5; color: #1A1A1F; }
+    .btn-ghost.small { padding: 4px 10px; font-size: 12px; margin-left: 8px; }
+
+    /* Admin layout */
+    .admin-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 20px 0 28px;
+    }
+    .admin-head h1 {
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 4px 0 4px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 6px;
+      background: #FFFFFF;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #52525B;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 160ms, color 160ms;
+    }
+    .tab:hover { background: #F4F4F5; color: #1A1A1F; }
+    .tab.active { background: #1A1A1F; color: #FFFFFF; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 220ms ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel-head { margin-bottom: 18px; }
+    .panel-head h2 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0 0 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .card {
+      background: #FFFFFF;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    .card.warm {
+      background: linear-gradient(135deg,#FFFCEB 0%, #FFF6CF 100%);
+    }
+    .card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .form-grid .span-2 { grid-column: span 2; }
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .span-2 { grid-column: span 1; }
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .list { display: grid; gap: 8px; }
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: #FAFAF7;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    .list-item .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(168,230,207,0.4);
+      color: #065F46;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .list-item .badge.note { background: rgba(255,224,130,0.5); color: #92400E; }
+    .list-item .badge.private { background: rgba(239,68,68,0.1); color: #B91C1C; }
+    .list-item .badge.public { background: rgba(168,230,207,0.4); color: #065F46; }
+    .list-item .title { flex: 1; font-weight: 600; color: #1A1A1F; }
+    .list-item .actions { display: flex; gap: 6px; }
+    .list-item .actions button {
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid #E4E4E7;
+      background: #FFFFFF;
+      font-size: 11px;
+      cursor: pointer;
+      color: #52525B;
+    }
+    .list-item .actions button:hover { background: #F4F4F5; color: #1A1A1F; }
+    .list-item .actions button.danger { color: #B91C1C; border-color: rgba(239,68,68,0.3); }
+
+    .theme-grid, .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .theme-card, .preset-card {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 14px;
+      border: 1px solid #E4E4E7;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: border-color 160ms, background 160ms;
+      background: #FAFAF7;
+    }
+    .theme-card:hover, .preset-card:hover { border-color: #6B5BFF; background: #FFFFFF; }
+    .theme-card input, .preset-card input { margin-top: 4px; }
+    .theme-name, .preset-name {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    code {
+      background: rgba(0,0,0,0.05);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88em;
+    }
+
+    .status-success { color: #047857; }
+    .status-error { color: #B91C1C; }
+    .status-pending { color: #B7791F; }
+  </style>
 </Layout>
 
 <script>
   import PocketBase from 'pocketbase';
 
+  const PB_URL = 'https://db.91917788.xyz';
+  const pb = new PocketBase(PB_URL);
+
+  // ---------- 工具 ----------
+  function $(id: string) { return document.getElementById(id); }
+  function val(id: string): string {
+    const el = $(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+    return el ? (el as any).value : '';
+  }
+  function checked(id: string): boolean {
+    const el = $(id) as HTMLInputElement | null;
+    return el ? el.checked : false;
+  }
+  function setVal(id: string, v: any) {
+    const el = $(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+    if (el) (el as any).value = v ?? '';
+  }
+  function setChecked(id: string, v: boolean) {
+    const el = $(id) as HTMLInputElement | null;
+    if (el) el.checked = !!v;
+  }
+  function status(id: string, msg: string, kind: 'success' | 'error' | 'pending' | '' = '') {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'muted ' + (kind ? 'status-' + kind : '');
+  }
+  function getCookie(name: string): string | null {
+    const m = document.cookie.match(new RegExp('(?:^| )' + name + '=([^;]+)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function setCookie(name: string, value: string, days = 365) {
+    document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${days * 86400}; SameSite=Lax`;
+  }
+  function clearCookie(name: string) {
+    document.cookie = `${name}=; path=/; max-age=0`;
+  }
+
+  // ---------- 登录 ----------
+  function showAdmin() {
+    const login = $('login-section');
+    const admin = $('admin-section');
+    if (login) login.style.display = 'none';
+    if (admin) admin.style.display = 'block';
+    const emailEl = $('admin-email');
+    if (emailEl) emailEl.textContent = (pb.authStore.model as any)?.email || '已登录';
+    initTabs();
+    loadAll();
+  }
+  function showLogin() {
+    const login = $('login-section');
+    const admin = $('admin-section');
+    if (login) login.style.display = 'block';
+    if (admin) admin.style.display = 'none';
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    // 换成你云端的真实地址
-    const pb = new PocketBase('https://db.91917788.xyz'); 
-    
-    const loginSection = document.getElementById('login-section');
-    const editorSection = document.getElementById('editor-section');
-    
-    // 检查本地是否已经有登录令牌
     if (pb.authStore.isValid) {
-      showEditor();
+      showAdmin();
+    } else {
+      showLogin();
     }
 
-    // --- 登录逻辑 ---
-    document.getElementById('login-btn').addEventListener('click', async () => {
-      const email = (document.getElementById('email') as HTMLInputElement).value;
-      const pass = (document.getElementById('password') as HTMLInputElement).value;
-      const errorDiv = document.getElementById('login-error');
-      
+    $('login-btn')?.addEventListener('click', async () => {
+      const email = val('email');
+      const pw = val('password');
+      const err = $('login-error');
+      if (err) err.style.display = 'none';
       try {
-        // 使用 admins 表进行超级管理员登录
-        await pb.admins.authWithPassword(email, pass);
-        errorDiv.classList.add('hidden');
-        showEditor();
-      } catch (err) {
-        errorDiv.textContent = "> 访问拒绝：凭证无效或网络异常。";
-        errorDiv.classList.remove('hidden');
+        await pb.admins.authWithPassword(email, pw);
+        showAdmin();
+      } catch (e: any) {
+        if (err) {
+          err.textContent = '登录失败：' + (e?.message || '凭据无效');
+          err.style.display = 'block';
+        }
       }
     });
 
-    // --- 注销逻辑 ---
-    document.getElementById('logout-btn').addEventListener('click', () => {
+    $('logout-btn')?.addEventListener('click', () => {
       pb.authStore.clear();
-      loginSection.classList.remove('hidden');
-      editorSection.classList.add('hidden');
+      showLogin();
     });
+  });
 
-    // --- 提交文章逻辑 ---
-    document.getElementById('submit-btn').addEventListener('click', async () => {
-      const title = (document.getElementById('post-title') as HTMLInputElement).value;
-      const slug = (document.getElementById('post-slug') as HTMLInputElement).value;
-      const content = (document.getElementById('post-content') as HTMLTextAreaElement).value;
-      const isPublished = (document.getElementById('post-publish') as HTMLInputElement).checked;
-      const statusDiv = document.getElementById('submit-status');
+  // ---------- Tabs ----------
+  function initTabs() {
+    const tabs = document.querySelectorAll<HTMLAnchorElement>('.tab');
+    const panels = document.querySelectorAll<HTMLElement>('.tab-panel');
+    function activate(name: string) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      panels.forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+    }
+    tabs.forEach(t => {
+      t.addEventListener('click', e => {
+        e.preventDefault();
+        const name = t.dataset.tab!;
+        history.replaceState(null, '', '#' + name);
+        activate(name);
+      });
+    });
+    const initial = (location.hash || '#posts').slice(1);
+    activate(initial || 'posts');
+  }
 
-      if (!title || !slug || !content) {
-        showStatus("> 错误：标题、Slug 和正文不能为空。", 'text-red-500');
+  // ---------- 一次性加载 ----------
+  async function loadAll() {
+    await Promise.allSettled([loadPosts(), loadDiaries(), loadSettings(), refreshCookieTheme()]);
+  }
+
+  // ---------- POSTS ----------
+  async function loadPosts() {
+    const list = $('post-list');
+    if (!list) return;
+    list.innerHTML = '<div class="muted small">加载中…</div>';
+    try {
+      const result = await pb.collection('posts').getList(1, 50, { sort: '-created' });
+      if (!result.items.length) {
+        list.innerHTML = '<div class="muted small">暂无内容。</div>';
         return;
       }
-
-      showStatus("> 正在向数据库注入信号...", 'text-yellow-500');
-
-      try {
-        const data = {
-          title: title,
-          slug: slug,
-          content: content,
-          is_published: isPublished
-        };
-        // 向 posts 表写入数据
-        await pb.collection('posts').create(data);
-        showStatus("> 注入成功！数据区块已同步。", 'text-green-400');
-        
-        // 清空表单，方便写下一篇
-        (document.getElementById('post-title') as HTMLInputElement).value = '';
-        (document.getElementById('post-slug') as HTMLInputElement).value = '';
-        (document.getElementById('post-content') as HTMLTextAreaElement).value = '';
-        
-      } catch (err) {
-        showStatus(`> 注入失败：${err.message}`, 'text-red-500');
+      list.innerHTML = '';
+      for (const it of result.items as any[]) {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const isNote = it.type === 'note';
+        const pubBadge = it.is_published
+          ? '<span class="badge public">已发布</span>'
+          : '<span class="badge private">草稿</span>';
+        const typeBadge = isNote
+          ? '<span class="badge note">笔记</span>'
+          : '<span class="badge">文章</span>';
+        row.innerHTML = `
+          ${typeBadge}${pubBadge}
+          <div class="title">${escapeHtml(it.title || '(untitled)')}</div>
+          <div class="muted small mono">${(it.slug || it.id).slice(0, 24)}</div>
+          <div class="actions">
+            <button data-act="toggle" data-id="${it.id}" data-pub="${!!it.is_published}">
+              ${it.is_published ? '下架' : '发布'}
+            </button>
+            <button data-act="del" data-id="${it.id}" class="danger">删除</button>
+          </div>
+        `;
+        list.appendChild(row);
       }
-    });
-
-    function showEditor() {
-      loginSection.classList.add('hidden');
-      editorSection.classList.remove('hidden');
+      list.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => onPostAction(btn));
+      });
+    } catch (e: any) {
+      list.innerHTML = `<div class="error">加载失败：${escapeHtml(e?.message || '')}</div>`;
     }
+  }
 
-    function showStatus(msg: string, colorClass: string) {
-      const statusDiv = document.getElementById('submit-status');
-      statusDiv.textContent = msg;
-      statusDiv.className = `mt-4 text-sm font-mono block ${colorClass}`;
+  async function onPostAction(btn: HTMLButtonElement) {
+    const id = btn.dataset.id!;
+    const act = btn.dataset.act!;
+    if (act === 'del') {
+      if (!confirm('确定删除？此操作不可恢复。')) return;
+      try { await pb.collection('posts').delete(id); await loadPosts(); }
+      catch (e: any) { alert('删除失败：' + (e?.message || '')); }
+    } else if (act === 'toggle') {
+      const wasPub = btn.dataset.pub === 'true';
+      try { await pb.collection('posts').update(id, { is_published: !wasPub }); await loadPosts(); }
+      catch (e: any) { alert('更新失败：' + (e?.message || '')); }
+    }
+  }
+
+  $('post-refresh-btn')?.addEventListener('click', () => loadPosts());
+  document.addEventListener('click', async (e) => {
+    if ((e.target as HTMLElement)?.id !== 'post-save-btn') return;
+    const data: any = {
+      title: val('post-title'),
+      slug: val('post-slug'),
+      content: val('post-content'),
+      excerpt: val('post-excerpt'),
+      tag: val('post-tag'),
+      emoji: val('post-emoji') || '📝',
+      is_published: checked('post-publish'),
+    };
+    const type = val('post-type');
+    if (type) data.type = type;
+
+    if (!data.title || !data.slug) { status('post-status', '标题和 slug 必填', 'error'); return; }
+    status('post-status', '保存中…', 'pending');
+    try {
+      await pb.collection('posts').create(data);
+      status('post-status', '已保存 ✓', 'success');
+      ['post-title','post-slug','post-content','post-excerpt','post-tag','post-emoji'].forEach(id => setVal(id, ''));
+      await loadPosts();
+    } catch (e: any) {
+      // 若是 type 字段不存在导致的失败，重试不带 type
+      if (data.type && /unknown field|type/i.test(e?.message || '')) {
+        try {
+          delete data.type;
+          await pb.collection('posts').create(data);
+          status('post-status', '已保存 ✓（PB schema 暂无 type 字段，已按文章保存）', 'success');
+          await loadPosts();
+          return;
+        } catch (e2: any) {
+          status('post-status', '保存失败：' + (e2?.message || ''), 'error');
+          return;
+        }
+      }
+      status('post-status', '保存失败：' + (e?.message || ''), 'error');
     }
   });
+
+  // ---------- DIARY ----------
+  async function loadDiaries() {
+    const list = $('diary-list');
+    if (!list) return;
+    list.innerHTML = '<div class="muted small">加载中…</div>';
+    try {
+      const result = await pb.collection('diaries').getList(1, 50, { sort: '-date' });
+      if (!result.items.length) {
+        list.innerHTML = '<div class="muted small">暂无日记。</div>';
+        return;
+      }
+      list.innerHTML = '';
+      for (const it of result.items as any[]) {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const pubBadge = it.is_public
+          ? '<span class="badge public">公开</span>'
+          : '<span class="badge private">🔒 私密</span>';
+        row.innerHTML = `
+          ${pubBadge}
+          <div class="title">${escapeHtml(it.title || '(untitled)')}</div>
+          <div class="muted small mono">${(it.date || it.created || '').slice(0, 10)}</div>
+          <div class="actions">
+            <button data-act="toggle-public" data-id="${it.id}" data-pub="${!!it.is_public}">
+              ${it.is_public ? '改为私密' : '公开'}
+            </button>
+            <button data-act="del-diary" data-id="${it.id}" class="danger">删除</button>
+          </div>
+        `;
+        list.appendChild(row);
+      }
+      list.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => onDiaryAction(btn));
+      });
+    } catch (e: any) {
+      list.innerHTML = `<div class="muted small">加载失败（diaries 表可能还未创建）：${escapeHtml(e?.message || '')}</div>`;
+    }
+  }
+  async function onDiaryAction(btn: HTMLButtonElement) {
+    const id = btn.dataset.id!;
+    const act = btn.dataset.act!;
+    if (act === 'del-diary') {
+      if (!confirm('确定删除这条日记？')) return;
+      try { await pb.collection('diaries').delete(id); await loadDiaries(); }
+      catch (e: any) { alert('删除失败：' + (e?.message || '')); }
+    } else if (act === 'toggle-public') {
+      const wasPub = btn.dataset.pub === 'true';
+      try { await pb.collection('diaries').update(id, { is_public: !wasPub }); await loadDiaries(); }
+      catch (e: any) { alert('更新失败：' + (e?.message || '')); }
+    }
+  }
+  $('diary-refresh-btn')?.addEventListener('click', () => loadDiaries());
+  $('diary-save-btn')?.addEventListener('click', async () => {
+    const data: any = {
+      title: val('diary-title'),
+      slug: val('diary-slug'),
+      content: val('diary-content'),
+      mood: val('diary-mood'),
+      weather: val('diary-weather'),
+      date: val('diary-date') || new Date().toISOString().slice(0, 10),
+      is_public: checked('diary-public'),
+    };
+    if (!data.title || !data.slug) { status('diary-status', '标题和 slug 必填', 'error'); return; }
+    status('diary-status', '保存中…', 'pending');
+    try {
+      await pb.collection('diaries').create(data);
+      status('diary-status', '已保存 ✓ ' + (data.is_public ? '已公开' : '🔒 私密'), 'success');
+      ['diary-title','diary-slug','diary-content','diary-weather'].forEach(id => setVal(id, ''));
+      setChecked('diary-public', false);
+      await loadDiaries();
+    } catch (e: any) {
+      status('diary-status', '保存失败（diaries 表可能尚未创建）：' + (e?.message || ''), 'error');
+    }
+  });
+
+  // ---------- SETTINGS ----------
+  let currentSettingsId: string | null = null;
+  async function loadSettings() {
+    try {
+      const result = await pb.collection('settings').getList(1, 1, { sort: '-created' });
+      const r: any = result.items[0];
+      if (r) {
+        currentSettingsId = r.id;
+        setVal('set-nickname', r.nickname);
+        setVal('set-tagline', r.tagline);
+        setVal('set-bio', r.bio);
+        setVal('set-github', r.social_github);
+        setVal('set-email', r.social_email);
+        setVal('set-music-url', r.music_url);
+        setVal('set-music-title', r.music_title);
+        setVal('set-music-artist', r.music_artist);
+        setVal('set-theme-color', r.theme_color || '#A8E6CF');
+        setVal('set-glass-opacity', r.glass_opacity ?? 0.8);
+        setVal('set-glass-blur', r.glass_blur ?? 10);
+        setVal('set-toc-blur', r.toc_text_blur ?? 5);
+        setChecked('set-particles', !!r.particles_enabled);
+        // 主题
+        const radio = document.querySelector<HTMLInputElement>(`input[name="active-theme"][value="${r.active_theme || 'bento'}"]`);
+        if (radio) radio.checked = true;
+        // 布局预设
+        const preset = r.bento_layout?.preset || r.bento_layout_preset || 'default';
+        const presetRadio = document.querySelector<HTMLInputElement>(`input[name="bento-preset"][value="${preset}"]`);
+        if (presetRadio) presetRadio.checked = true;
+      }
+    } catch (e) {
+      // 表不存在，由用户首次保存创建
+    }
+  }
+  $('settings-save-btn')?.addEventListener('click', async () => {
+    const data: any = {
+      nickname: val('set-nickname'),
+      tagline: val('set-tagline'),
+      bio: val('set-bio'),
+      social_github: val('set-github'),
+      social_email: val('set-email'),
+      music_url: val('set-music-url'),
+      music_title: val('set-music-title'),
+      music_artist: val('set-music-artist'),
+      theme_color: val('set-theme-color'),
+      glass_opacity: parseFloat(val('set-glass-opacity')) || 0.8,
+      glass_blur: parseInt(val('set-glass-blur')) || 10,
+      toc_text_blur: parseInt(val('set-toc-blur')) || 5,
+      particles_enabled: checked('set-particles'),
+    };
+    status('settings-status', '保存中…', 'pending');
+    try {
+      if (currentSettingsId) {
+        await pb.collection('settings').update(currentSettingsId, data);
+      } else {
+        const r = await pb.collection('settings').create(data);
+        currentSettingsId = (r as any).id;
+      }
+      status('settings-status', '已保存 ✓ 刷新前端可见', 'success');
+    } catch (e: any) {
+      status('settings-status', '保存失败：' + (e?.message || ''), 'error');
+    }
+  });
+
+  // ---------- THEME ----------
+  $('theme-save-btn')?.addEventListener('click', async () => {
+    const radio = document.querySelector<HTMLInputElement>('input[name="active-theme"]:checked');
+    if (!radio) { status('theme-status', '请选择主题', 'error'); return; }
+    status('theme-status', '保存中…', 'pending');
+    try {
+      const data = { active_theme: radio.value };
+      if (currentSettingsId) {
+        await pb.collection('settings').update(currentSettingsId, data);
+      } else {
+        const r = await pb.collection('settings').create(data);
+        currentSettingsId = (r as any).id;
+      }
+      status('theme-status', '已保存 ✓', 'success');
+    } catch (e: any) {
+      status('theme-status', '保存失败：' + (e?.message || ''), 'error');
+    }
+  });
+  function refreshCookieTheme() {
+    const el = $('cookie-theme-current');
+    if (el) el.textContent = getCookie('site_theme') || '(未设置)';
+  }
+  $('cookie-theme-clear')?.addEventListener('click', () => {
+    clearCookie('site_theme');
+    refreshCookieTheme();
+  });
+
+  // ---------- LAYOUT ----------
+  $('layout-save-btn')?.addEventListener('click', async () => {
+    const radio = document.querySelector<HTMLInputElement>('input[name="bento-preset"]:checked');
+    if (!radio) { status('layout-status', '请选择布局', 'error'); return; }
+    status('layout-status', '保存中…', 'pending');
+    try {
+      const data: any = { bento_layout: { preset: radio.value }, bento_layout_preset: radio.value };
+      if (currentSettingsId) {
+        await pb.collection('settings').update(currentSettingsId, data);
+      } else {
+        const r = await pb.collection('settings').create(data);
+        currentSettingsId = (r as any).id;
+      }
+      status('layout-status', '已保存 ✓', 'success');
+    } catch (e: any) {
+      // 若 bento_layout 字段不存在，退化为 bento_layout_preset
+      if (/unknown field|bento_layout/i.test(e?.message || '')) {
+        try {
+          if (currentSettingsId) {
+            await pb.collection('settings').update(currentSettingsId, { bento_layout_preset: radio.value });
+            status('layout-status', '已保存 ✓（仅写入 bento_layout_preset）', 'success');
+            return;
+          }
+        } catch (e2: any) {
+          status('layout-status', '保存失败：' + (e2?.message || ''), 'error');
+          return;
+        }
+      }
+      status('layout-status', '保存失败：' + (e?.message || ''), 'error');
+    }
+  });
+
+  function escapeHtml(s: string): string {
+    return (s || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    } as any)[c]);
+  }
 </script>

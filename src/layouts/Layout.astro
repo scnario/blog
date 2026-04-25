@@ -1,69 +1,92 @@
 ---
+/**
+ * 主 Layout — 全站统一框架
+ *
+ * 改造（P-Nav）：
+ * - 顶部 TopNav 替代原本零散的导航
+ * - aside 改为条件渲染：showSidebar / showToc 由页面 props 控制
+ * - settings 通过 src/lib/queries.ts 取，带 5 分钟缓存与字段缺失回退
+ * - ThemeSwitcher 始终浮动在右下角
+ */
 import '../styles/global.css';
 import HeroHeader from '../components/HeroHeader.astro';
 import ProfileCard from '../components/ProfileCard.astro';
 import TocPanel from '../components/TocPanel.astro';
 import MusicPlayer from '../components/MusicPlayer.astro';
-import pb from '../lib/pb.ts';
+import TopNav from '../components/TopNav.astro';
+import ThemeSwitcher from '../components/ThemeSwitcher.astro';
+import { getSettings } from '../lib/queries';
+import { resolveTheme, type ThemeSlug } from '../lib/theme';
 
-const { title, frontmatter, headings = [] } = Astro.props;
-const pageTitle = title || frontmatter?.title || '数字花园';
-const toc = headings.filter((h: any) => h.depth <= 3);
-const isMarkdown = !!frontmatter; 
-
-// 1. 服务端获取 PocketBase 配置
-let settings = null;
-try {
-  const result = await pb.collection('settings').getList(1, 1, { sort: '-created' });
-  if (result.items.length > 0) {
-    settings = result.items[0];
-  }
-} catch (error) {
-  console.log("配置读取失败或表为空");
+interface Props {
+  title?: string;
+  frontmatter?: any;
+  headings?: any[];
+  /** 默认 true，控制台 / 全屏工具页传 false */
+  showSidebar?: boolean;
+  /** 仅在文章/笔记详情页传 true（且 headings 非空） */
+  showToc?: boolean;
 }
 
-// 2. 将数据映射为变量，并提供安全的回退值
-const themeColor = settings?.theme_color || '#00ffcc';
-const glassOpacity = settings?.glass_opacity ?? 0.8;
-const glassBlur = settings?.glass_blur ?? 10;
-const tocTextBlur = settings?.toc_text_blur ?? 5;
-const showParticles = settings?.particles_enabled ? 'block' : 'none';
+const {
+  title,
+  frontmatter,
+  headings = [],
+  showSidebar = true,
+  showToc: showTocProp,
+} = Astro.props as Props;
 
-// 提取图片 URL 的辅助函数
-const getPbUrl = (record: any, filename: string) => 
-  record && filename ? pb.files.getUrl(record, filename) : null;
+const pageTitle = title || frontmatter?.title || '数字花园';
+const toc = headings.filter((h: any) => h.depth <= 3);
+const isMarkdown = !!frontmatter;
+const showToc = showTocProp ?? toc.length > 0;
 
-// 背景图处理：如果数据库有则用数据库的，没有则用你原本的 Unsplash 默认图
-const bgImageFromDb = getPbUrl(settings, settings?.bg_image);
-const bgUrl = bgImageFromDb 
-  ? `url('${bgImageFromDb}')` 
-  : "url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')";
+const settings = await getSettings();
 
-const avatarMain = getPbUrl(settings, settings?.avatar_main) ? `url('${getPbUrl(settings, settings.avatar_main)}')` : 'none';
-const avatarSub = getPbUrl(settings, settings?.avatar_sub) ? `url('${getPbUrl(settings, settings.avatar_sub)}')` : 'none';
+// cookie 优先，其次 PB settings.active_theme，最后 default
+const cookieTheme = Astro.cookies.get('site_theme')?.value;
+const activeTheme: ThemeSlug = resolveTheme({
+  cookieValue: cookieTheme,
+  pbActiveTheme: settings.active_theme,
+});
+
+// 主题色：cookie/settings 已有 theme_color 兼容字段
+const themeColor = settings.theme_color || '#6B5BFF';
+const glassOpacity = settings.glass_opacity;
+const glassBlur = settings.glass_blur;
+const tocTextBlur = settings.toc_text_blur;
+const showParticles = settings.particles_enabled ? 'block' : 'none';
+
+const bgUrl = settings.bg_image
+  ? `url('${settings.bg_image}')`
+  : 'none';
+const avatarMain = settings.avatar_main ? `url('${settings.avatar_main}')` : 'none';
+const avatarSub = settings.avatar_sub ? `url('${settings.avatar_sub}')` : 'none';
+
+const pathname = Astro.url.pathname;
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme={activeTheme}>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{pageTitle}</title>
-    
-    <style is:global define:vars={{ 
-      themeColor, 
-      glassOpacity, 
-      glassBlur, 
+
+    <style is:global define:vars={{
+      themeColor,
+      glassOpacity,
+      glassBlur,
       tocTextBlur,
-      showParticles, 
-      bgUrl, 
-      avatarMain, 
-      avatarSub 
+      showParticles,
+      bgUrl,
+      avatarMain,
+      avatarSub
     }}>
       :root {
         --text-accent: var(--themeColor);
         --glass-opacity: var(--glassOpacity);
-        --glass-bg: rgba(32, 33, 36, var(--glassOpacity));
+        --glass-bg: rgba(255, 255, 255, var(--glassOpacity));
         --glass-blur: calc(var(--glassBlur) * 1px);
         --toc-text-blur: calc(var(--tocTextBlur) * 1px);
         --show-particles: var(--showParticles);
@@ -71,17 +94,22 @@ const avatarSub = getPbUrl(settings, settings?.avatar_sub) ? `url('${getPbUrl(se
         --avatar-main: var(--avatarMain);
         --avatar-sub: var(--avatarSub);
       }
+
+      /* Bento 浅色基底 — 让现有页面自然适配 */
+      body {
+        background: #FAFAF7;
+        color: #1A1A1F;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
     </style>
   </head>
-  
-  <body class="antialiased min-h-screen py-12 px-6 relative overflow-x-hidden bg-cover bg-fixed bg-center" 
-        style="background-image: var(--bg-image);">
-    
-    <div class="fixed inset-0 z-[-1] bg-black/50 pointer-events-none"></div>
-    
-    <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-10 relative z-10">
-      
-      <main class="flex-1 min-w-0 w-full">
+
+  <body class="antialiased min-h-screen">
+    <TopNav pathname={pathname} brand={settings.nickname || '数字花园'} />
+
+    <div class="page-shell">
+      <main class="page-main">
         {isMarkdown && <HeroHeader title={pageTitle} />}
         {isMarkdown ? (
           <article class="hifi-card">
@@ -92,50 +120,44 @@ const avatarSub = getPbUrl(settings, settings?.avatar_sub) ? `url('${getPbUrl(se
         )}
       </main>
 
-      <aside class="hidden lg:flex flex-col gap-8 w-72 shrink-0">
-        <ProfileCard />
-        <TocPanel toc={toc} />
-      </aside>
-
+      {showSidebar && (
+        <aside class="page-aside">
+          <ProfileCard />
+          {showToc && <TocPanel toc={toc} />}
+        </aside>
+      )}
     </div>
 
     <MusicPlayer />
+    <ThemeSwitcher active={activeTheme} basePath="/" />
+
+    <style>
+      .page-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 24px 96px;
+        display: flex;
+        gap: 32px;
+        align-items: flex-start;
+      }
+      .page-main { flex: 1; min-width: 0; }
+      .page-aside {
+        width: 288px;
+        flex-shrink: 0;
+        display: flex; flex-direction: column; gap: 24px;
+        position: sticky;
+        top: 80px;
+      }
+      @media (max-width: 1024px) {
+        .page-aside { display: none; }
+      }
+      @media (max-width: 640px) {
+        .page-shell { padding: 20px 16px 80px; }
+      }
+    </style>
 
     <script>
-      // 星空 Canvas 特效逻辑保持完全不变
-      document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.hifi-card').forEach(card => {
-          const canvas = document.createElement('canvas');
-          canvas.className = 'absolute inset-0 pointer-events-none rounded-[inherit] z-0';
-          card.appendChild(canvas);
-          const ctx = canvas.getContext('2d');
-          let width = canvas.width = card.offsetWidth;
-          let height = canvas.height = card.offsetHeight;
-          let stars = [];
-
-          function initStars() {
-            stars = [];
-            const count = Math.floor((width * height) / 6000); 
-            for(let i = 0; i < count; i++) stars.push({ x: Math.random() * width, y: Math.random() * height, radius: Math.random() * 1.2, speedY: Math.random() * 0.3 + 0.1, alpha: Math.random() });
-          }
-          function drawStars() {
-            ctx.clearRect(0, 0, width, height);
-            stars.forEach(star => {
-              star.alpha += (Math.random() - 0.5) * 0.05;
-              if(star.alpha < 0.1) star.alpha = 0.1; if(star.alpha > 0.8) star.alpha = 0.8;
-              ctx.fillStyle = `rgba(245, 166, 35, ${star.alpha})`;
-              ctx.beginPath(); ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2); ctx.fill();
-              star.y -= star.speedY; 
-              if (star.y < 0) { star.y = height; star.x = Math.random() * width; }
-            });
-            requestAnimationFrame(drawStars);
-          }
-          initStars(); drawStars();
-          new ResizeObserver(() => { width = canvas.width = card.offsetWidth; height = canvas.height = card.offsetHeight; initStars(); }).observe(card);
-        });
-      });
-
-      // 代码块高亮逻辑保持完全不变
+      // 代码块高亮 — 保留原逻辑
       document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('pre').forEach(pre => {
           if (pre.parentElement?.classList.contains('code-body')) return;

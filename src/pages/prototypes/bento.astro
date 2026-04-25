@@ -1,0 +1,587 @@
+---
+// P0 风格原型 — Bento Grid 首页样稿
+// 独立于 Layout.astro，使用 mock 数据，不连 PocketBase
+// 目的：确认"明亮 Bento + 多彩卡片 + 明显动画"风格的视觉效果
+// 已加入更丰富的动画：3D tilt / count-up / magnetic / sparkle / scroll reveal
+import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
+
+const posts = [
+  { slug: 'xmod', title: 'XanMod 内核 + BBRv3 调优脚本', excerpt: '一键编译 XanMod 并启用 BBRv3，适配 Debian / Ubuntu。', tag: 'Linux', emoji: '🐧', date: '2026-03-18', reads: 842 },
+  { slug: 'vaultwarden', title: '自建 Vaultwarden 密码管理器', excerpt: '用 Docker + Cloudflare Tunnel 搭一个只属于自己的密码保险柜。', tag: '自建服务', emoji: '🔐', date: '2026-03-04', reads: 1203 },
+  { slug: 'create-blog', title: 'Webhook 自动部署博客', excerpt: 'Git push 到仓库触发 Webhook，服务器自动 pull+build。', tag: 'DevOps', emoji: '⚙️', date: '2026-02-22', reads: 567 },
+  { slug: 'astro-ssr', title: 'Astro SSR 首屏性能优化笔记', excerpt: '从 3.2s 到 0.8s，做对了 5 件事。', tag: 'Frontend', emoji: '🚀', date: '2026-02-10', reads: 1456 },
+  { slug: 'pocketbase-notes', title: 'PocketBase 作为 BaaS 的边界', excerpt: '能做什么、不能做什么，以及我踩的 3 个坑。', tag: 'Backend', emoji: '🗄️', date: '2026-01-28', reads: 998 },
+];
+
+const diaries = [
+  { slug: '2026-04-20', title: '第一次试用 Motion One', mood: '专注', weather: '多云', date: '2026-04-20' },
+  { slug: '2026-04-15', title: '深夜的咖啡和 Astro 文档', mood: '平静', weather: '雨', date: '2026-04-15' },
+  { slug: '2026-04-08', title: '推翻了黑胶风格', mood: '兴奋', weather: '晴', date: '2026-04-08' },
+];
+
+const tags = [
+  { name: 'Linux', count: 8, color: 'mint' },
+  { name: 'DevOps', count: 6, color: 'coral' },
+  { name: 'Frontend', count: 11, color: 'lilac' },
+  { name: 'Backend', count: 5, color: 'cream' },
+  { name: '自建服务', count: 4, color: 'mint' },
+  { name: '工具', count: 7, color: 'coral' },
+];
+
+const accentStyle: Record<string, string> = {
+  mint:  'background: rgba(168,230,207,0.55); color: #065F46; box-shadow: inset 0 0 0 1px rgba(110,211,168,0.8);',
+  coral: 'background: rgba(255,138,128,0.35); color: #881337; box-shadow: inset 0 0 0 1px rgba(255,138,128,0.9);',
+  lilac: 'background: rgba(197,163,255,0.40); color: #4C1D95; box-shadow: inset 0 0 0 1px rgba(197,163,255,0.9);',
+  cream: 'background: rgba(255,224,130,0.55); color: #78350F; box-shadow: inset 0 0 0 1px rgba(245,158,11,0.6);',
+};
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bento 原型 · 数字花园</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <style is:global>
+      :root {
+        --bg: #FAFAF7;
+        --ink: #1A1A1F;
+        --ink-soft: #52525B;
+        --ink-mute: #8A8A94;
+        --line: rgba(26, 26, 31, 0.08);
+        --card: #FFFFFF;
+        --mint: #A8E6CF;
+        --coral: #FF8A80;
+        --lilac: #C5A3FF;
+        --cream: #FFE082;
+        --shadow-card: 0 8px 24px rgba(26, 26, 31, 0.06), 0 2px 6px rgba(26, 26, 31, 0.04);
+        --shadow-hover: 0 16px 40px rgba(26, 26, 31, 0.12), 0 4px 12px rgba(26, 26, 31, 0.08);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: 'cv11','ss01';
+      }
+      body::before {
+        content: '';
+        position: fixed; inset: 0;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+        z-index: 1; opacity: 0.5;
+      }
+      /* === 3D tilt 与入场状态由 CSS 变量统一驱动 === */
+      .tile {
+        background: var(--card);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: var(--shadow-card);
+        position: relative;
+        overflow: hidden;
+        transform-style: preserve-3d;
+        transition:
+          transform 320ms cubic-bezier(.2,.8,.2,1),
+          box-shadow 320ms;
+        /* 初始状态：未入场 */
+        opacity: 0;
+        transform:
+          perspective(900px)
+          rotateX(0deg) rotateY(0deg)
+          translateY(20px) scale(0.97);
+      }
+      .tile.in {
+        opacity: 1;
+        transform:
+          perspective(900px)
+          rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))
+          translateY(var(--ty, 0px)) scale(1);
+      }
+      .tile:hover {
+        --ty: -4px;
+        box-shadow: var(--shadow-hover);
+      }
+      .tile-glow::after {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        border-radius: inherit;
+        background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), rgba(197,163,255,0.18), transparent 40%);
+        opacity: 0;
+        transition: opacity 280ms;
+        pointer-events: none;
+      }
+      .tile-glow:hover::after { opacity: 1; }
+      .chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      .grain { background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 6px 6px; }
+      .dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+
+      /* Hero 大标题渐变 */
+      .hero-title {
+        background: linear-gradient(120deg, #1A1A1F 0%, #6B5BFF 40%, #FF8A80 70%, #1A1A1F 100%);
+        background-size: 200% auto;
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        animation: sheen 8s ease-in-out infinite;
+      }
+      @keyframes sheen {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+      }
+
+      /* 时间线 */
+      .timeline { position: relative; padding-left: 22px; }
+      .timeline::before {
+        content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px;
+        width: 2px; background: linear-gradient(180deg, var(--lilac), var(--cream));
+        border-radius: 2px;
+      }
+      .timeline-item { position: relative; }
+      .timeline-item::before {
+        content: ''; position: absolute; left: -22px; top: 6px;
+        width: 10px; height: 10px; border-radius: 999px;
+        background: var(--card); border: 2px solid var(--lilac);
+      }
+
+      /* 底部 emoji 水印 */
+      .watermark {
+        position: absolute; right: -20px; bottom: -30px;
+        font-size: 160px; opacity: 0.07;
+        pointer-events: none; user-select: none;
+      }
+
+      /* 明显的 hover 抬升 & 阴影 */
+      a.reset { color: inherit; text-decoration: none; }
+      a.reset:hover { color: inherit; }
+
+      /* 12 栅 */
+      .bento {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 20px;
+      }
+      @media (max-width: 900px) {
+        .bento { grid-template-columns: repeat(2, 1fr); }
+        .bento > * { grid-column: span 2 !important; }
+      }
+
+      /* 标签云按钮 */
+      .tag-pill {
+        transition: transform 200ms, box-shadow 200ms;
+      }
+      .tag-pill:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+      /* 光标闪烁（hero tagline） */
+      .caret { display: inline-block; width: 2px; height: 1em; background: #1A1A1F; vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(2) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+      @keyframes spin-disk { to { transform: rotate(360deg); } }
+      .spin-disk { animation: spin-disk 6s linear infinite; }
+
+      /* 磁吸按钮 — 脚本写 translate，这里只管过渡曲线 */
+      [data-magnetic] { transition: transform 280ms cubic-bezier(.2,.7,.2,1); will-change: transform; }
+
+      /* Sparkle 粒子节点（脚本动态创建） */
+      .sparkle {
+        position: fixed; pointer-events: none; z-index: 9998;
+        font-size: 18px; line-height: 1; will-change: transform, opacity;
+      }
+
+      /* 呼吸式 pulse 圆点（状态灯） */
+      .pulse-dot {
+        width: 8px; height: 8px; border-radius: 999px;
+        background: #6ED3A8;
+        animation: pulse 2.4s ease-in-out infinite;
+        display: inline-block;
+      }
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(110,211,168,0.55); transform: scale(1); }
+        50% { box-shadow: 0 0 0 10px rgba(110,211,168,0); transform: scale(1.15); }
+      }
+
+      /* Count-up 数字等宽，避免跳动 */
+      [data-countup] { font-variant-numeric: tabular-nums; }
+
+      /* Hero 大标题每字符入场 stagger */
+      .hero-title .ch {
+        display: inline-block;
+        opacity: 0;
+        transform: translateY(30px) rotate(-5deg);
+        animation: letterIn 780ms cubic-bezier(.2,.7,.2,1) forwards;
+      }
+      @keyframes letterIn {
+        to { opacity: 1; transform: translateY(0) rotate(0); }
+      }
+
+      /* tag 标签 hover 弹动 */
+      .tag-pill {
+        transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms !important;
+      }
+      .tag-pill:hover {
+        transform: translateY(-3px) rotate(-2deg) !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.1) !important;
+      }
+
+      /* Reduced motion 优先 */
+      @media (prefers-reduced-motion: reduce) {
+        .tile, .tile-glow::after, .spin-disk, [data-magnetic], .hero-title .ch {
+          animation: none !important;
+          transition: none !important;
+          transform: none !important;
+          opacity: 1 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div style="position: relative; z-index: 2; max-width: 1200px; margin: 0 auto; padding: 48px 24px;">
+
+      <!-- 顶部导航 -->
+      <nav style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, var(--lilac), var(--coral)); display: flex; align-items: center; justify-content: center; font-size: 18px;">🌱</div>
+          <div style="font-weight: 700; font-size: 17px;">数字花园</div>
+          <span class="mono" style="font-size: 11px; color: var(--ink-mute); background: var(--line); padding: 2px 8px; border-radius: 6px;">v0.1 · bento</span>
+        </div>
+        <div style="display: flex; gap: 24px; font-size: 14px; font-weight: 500; color: var(--ink-soft);">
+          <a href="#" class="reset">博客</a>
+          <a href="#" class="reset">日记</a>
+          <a href="#" class="reset">工具</a>
+          <a href="#" class="reset" style="color: var(--ink);">关于</a>
+        </div>
+      </nav>
+
+      <!-- Bento Grid -->
+      <div class="bento">
+
+        <!-- Hero -->
+        <div class="tile tile-glow" style="grid-column: span 12; padding: 48px 40px; background: linear-gradient(135deg, #FFFFFF 0%, #FFF9F0 100%);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+            <span class="pulse-dot"></span>
+            <span class="mono" style="font-size: 12px; color: var(--ink-mute); letter-spacing: 0.06em;">LIVING DIGITAL GARDEN · SINCE 2023</span>
+          </div>
+          <h1 class="hero-title" data-split style="font-size: clamp(36px, 6vw, 64px); line-height: 1.05; margin: 0 0 20px; font-weight: 800; letter-spacing: -0.02em;">Day by day, life by life.</h1>
+          <p style="font-size: 17px; color: var(--ink-soft); margin: 0 0 28px; max-width: 560px; line-height: 1.6;">
+            一个把技术笔记、工具碎片和日常杂感放在同一口井里的地方<span class="caret"></span>
+          </p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="#" class="reset" data-magnetic data-sparkle style="padding: 12px 22px; background: var(--ink); color: white; border-radius: 999px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px;">读最新文章 →</a>
+            <a href="#" class="reset" data-magnetic data-sparkle style="padding: 12px 22px; background: white; color: var(--ink); border-radius: 999px; font-weight: 600; font-size: 14px; border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 8px;">去日记本 📓</a>
+          </div>
+          <div class="watermark">✦</div>
+        </div>
+
+        <!-- 最新文章 大卡 -->
+        <a href="#" class="reset tile tile-glow" style="grid-column: span 6; grid-row: span 2; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="flex: 1; background: linear-gradient(135deg, #A8E6CF 0%, #6ED3A8 100%); padding: 32px; position: relative; min-height: 220px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <span class="chip" style="background: rgba(255,255,255,0.75); color: #065F46; padding: 6px 12px; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(6,95,70,0.15);">
+                {posts[0].tag}
+              </span>
+              <span class="mono" style="font-size: 11px; color: rgba(6,95,70,0.7);">LATEST</span>
+            </div>
+            <div style="position: absolute; right: 24px; bottom: 16px; font-size: 96px; line-height: 1; opacity: 0.4;">{posts[0].emoji}</div>
+          </div>
+          <div style="padding: 28px;">
+            <h2 style="font-size: 24px; font-weight: 700; margin: 0 0 10px; letter-spacing: -0.01em; line-height: 1.25;">{posts[0].title}</h2>
+            <p style="color: var(--ink-soft); font-size: 15px; line-height: 1.6; margin: 0 0 16px;">{posts[0].excerpt}</p>
+            <div style="display: flex; gap: 16px; font-size: 13px; color: var(--ink-mute);">
+              <span class="mono">{posts[0].date}</span>
+              <span>·</span>
+              <span><span data-countup={posts[0].reads}>0</span> 次阅读</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Profile -->
+        <div class="tile tile-glow" style="grid-column: span 3; background: linear-gradient(135deg, #FFFFFF 0%, #FFF0F0 100%);">
+          <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
+            <div style="width: 64px; height: 64px; border-radius: 999px; background: linear-gradient(135deg, var(--coral), var(--lilac)); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 16px rgba(255,138,128,0.3);">🧑‍💻</div>
+            <div>
+              <div style="font-weight: 700; font-size: 16px;">twj0</div>
+              <div class="mono" style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">@twj0 · 码农日志</div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <a href="#" class="reset" style="width: 30px; height: 30px; border-radius: 8px; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: 14px;">🐙</a>
+              <a href="#" class="reset" style="width: 30px; height: 30px; border-radius: 8px; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: 14px;">✉️</a>
+              <a href="#" class="reset" style="width: 30px; height: 30px; border-radius: 8px; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: 14px;">🔗</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Music Player -->
+        <div class="tile tile-glow" style="grid-column: span 3; background: linear-gradient(135deg, #F0EBFF 0%, #FFFFFF 100%);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="spin-disk" style="width: 52px; height: 52px; border-radius: 999px; background: radial-gradient(circle, #1A1A1F 30%, #3A3A45 70%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.15);">
+              <div style="width: 14px; height: 14px; border-radius: 999px; background: var(--cream);"></div>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div class="mono" style="font-size: 10px; color: var(--ink-mute); letter-spacing: 0.08em;">NOW PLAYING</div>
+              <div style="font-weight: 600; font-size: 14px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Lo-fi Evening</div>
+              <div style="font-size: 12px; color: var(--ink-soft); margin-top: 2px;">Pixabay Music</div>
+            </div>
+          </div>
+          <div style="margin-top: 14px; height: 3px; background: var(--line); border-radius: 999px; overflow: hidden;">
+            <div style="width: 42%; height: 100%; background: linear-gradient(90deg, var(--lilac), var(--coral)); border-radius: 999px;"></div>
+          </div>
+        </div>
+
+        <!-- 近期日记 -->
+        <div class="tile tile-glow" style="grid-column: span 6; background: linear-gradient(135deg, #FFFDF5 0%, #FFF9E6 100%);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 20px;">📓</span>
+              <h3 style="font-size: 15px; font-weight: 700; margin: 0; letter-spacing: -0.01em;">最近的日记</h3>
+            </div>
+            <a href="#" class="reset mono" style="font-size: 11px; color: var(--ink-mute);">全部 →</a>
+          </div>
+          <div class="timeline">
+            {diaries.map(d => (
+              <a href={`/diary/${d.slug}`} class="reset timeline-item" style="display: block; padding: 10px 0; border-bottom: 1px dashed var(--line);">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px;">
+                  <div style="font-size: 14px; font-weight: 600;">{d.title}</div>
+                  <div class="mono" style="font-size: 11px; color: var(--ink-mute); flex-shrink: 0;">{d.date}</div>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--ink-soft);">
+                  <span>🌤️ {d.weather}</span>
+                  <span>·</span>
+                  <span>心情：{d.mood}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <!-- 标签云 -->
+        <div class="tile tile-glow" style="grid-column: span 3;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+            <span style="font-size: 18px;">🏷️</span>
+            <h3 style="font-size: 14px; font-weight: 700; margin: 0;">标签</h3>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            {tags.map(t => (
+              <a href="#" class="tag-pill reset chip" style={accentStyle[t.color]}>
+                <span>{t.name}</span>
+                <span class="mono" style="opacity: 0.65; font-size: 10px;">{t.count}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <!-- 状态瓷砖 -->
+        <div class="tile tile-glow" style="grid-column: span 3; background: linear-gradient(135deg, #E8FFF4 0%, #FFFFFF 100%);">
+          <div class="mono" style="font-size: 10px; color: var(--ink-mute); letter-spacing: 0.08em; margin-bottom: 8px;">UPTIME</div>
+          <div style="font-size: 28px; font-weight: 800; letter-spacing: -0.02em;">
+            <span data-countup="312">0</span><span style="font-size: 14px; color: var(--ink-mute); font-weight: 500; margin-left: 4px;">天</span>
+          </div>
+          <div style="margin-top: 10px; display: flex; gap: 3px;">
+            {Array.from({length: 14}).map((_, i) => (
+              <div style={`width: 6px; height: ${8 + (i % 5) * 3}px; background: var(--mint); border-radius: 2px; opacity: ${0.4 + (i % 5) * 0.12};`}></div>
+            ))}
+          </div>
+          <div style="margin-top: 12px; font-size: 12px; color: var(--ink-soft);">博客已连续运行</div>
+        </div>
+
+        <!-- 更多文章 -->
+        {posts.slice(1).map((post, i) => {
+          const colors = ['coral', 'lilac', 'cream', 'mint'];
+          const c = colors[i % colors.length];
+          const bgMap = {
+            coral: 'linear-gradient(135deg, #FFE5E1 0%, #FFFFFF 100%)',
+            lilac: 'linear-gradient(135deg, #F0EBFF 0%, #FFFFFF 100%)',
+            cream: 'linear-gradient(135deg, #FFF8E1 0%, #FFFFFF 100%)',
+            mint: 'linear-gradient(135deg, #E8FFF4 0%, #FFFFFF 100%)',
+          };
+          return (
+            <a href={`/posts/${post.slug}`} class="reset tile tile-glow" style={`grid-column: span 4; background: ${bgMap[c]};`}>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <span class="chip" style={accentStyle[c]}>{post.tag}</span>
+                <span style="font-size: 32px; line-height: 1;">{post.emoji}</span>
+              </div>
+              <h3 style="font-size: 17px; font-weight: 700; margin: 0 0 8px; line-height: 1.3; letter-spacing: -0.01em;">{post.title}</h3>
+              <p style="font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 0 0 14px;">{post.excerpt}</p>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-mute);">
+                <span class="mono">{post.date}</span>
+                <span><span data-countup={post.reads}>0</span> reads</span>
+              </div>
+            </a>
+          );
+        })}
+
+        <!-- 页脚瓷砖 -->
+        <div class="tile grain" style="grid-column: span 12; padding: 24px 32px; background: #1A1A1F; color: #FAFAF7;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div class="mono" style="font-size: 12px; opacity: 0.7;">
+              $ echo "Built with Astro + PocketBase" | cowsay
+            </div>
+            <div style="display: flex; gap: 16px; font-size: 12px; opacity: 0.7;">
+              <a href="#" class="reset" style="color: inherit;">RSS</a>
+              <a href="#" class="reset" style="color: inherit;">GitHub</a>
+              <a href="#" class="reset" style="color: inherit;">Console</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 原型提示条 -->
+      <div style="margin-top: 40px; padding: 16px 20px; background: #FFF3CD; border: 1px dashed #F59E0B; border-radius: 12px; font-size: 13px; color: #78350F;">
+        <strong>🍱 Bento 增强版原型</strong> — 在基线之上加入：标题逐字入场 / 卡片 3D 倾斜跟手 / 数字滚动 / 磁吸按钮 / 粒子点击爆发 / Konami 彩蛋（↑↑↓↓←→←→BA）。基线对比见 <span class="mono">/prototypes/bento-classic</span>。
+      </div>
+    </div>
+
+    <script>
+      // ===== 动画总开关：尊重用户的减弱动效偏好 =====
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // ---------- 1. Hero 标题逐字入场 ----------
+        document.querySelectorAll<HTMLElement>('[data-split]').forEach(el => {
+          const text = el.textContent ?? '';
+          el.textContent = '';
+          [...text].forEach((c, i) => {
+            const span = document.createElement('span');
+            span.className = 'ch';
+            span.textContent = c === ' ' ? '\u00A0' : c;
+            span.style.animationDelay = `${i * 35}ms`;
+            el.appendChild(span);
+          });
+        });
+
+        // ---------- 2. IntersectionObserver 触发 .in（替换粗暴 setTimeout） ----------
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+              const target = entry.target as HTMLElement;
+              // 视口内 stagger：用元素在视口里的顺序而非全局 index
+              setTimeout(() => target.classList.add('in'), i * 70);
+              io.unobserve(target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        document.querySelectorAll('.tile').forEach(t => io.observe(t));
+
+        // ---------- 3. 3D Tilt + 光晕跟随 ----------
+        if (!reduceMotion) {
+          document.querySelectorAll<HTMLElement>('.tile-glow').forEach(el => {
+            el.addEventListener('mousemove', (e) => {
+              const rect = el.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const cx = rect.width / 2;
+              const cy = rect.height / 2;
+              const ry = ((x - cx) / cx) * 6;   // 左右倾 ±6deg
+              const rx = -((y - cy) / cy) * 5;  // 上下倾 ±5deg
+              el.style.setProperty('--mx', `${x}px`);
+              el.style.setProperty('--my', `${y}px`);
+              el.style.setProperty('--rx', `${rx}deg`);
+              el.style.setProperty('--ry', `${ry}deg`);
+            });
+            el.addEventListener('mouseleave', () => {
+              el.style.setProperty('--rx', `0deg`);
+              el.style.setProperty('--ry', `0deg`);
+            });
+          });
+        }
+
+        // ---------- 4. Count-up 数字 ----------
+        const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+        const animateCount = (el: HTMLElement) => {
+          const target = Number(el.dataset.countup ?? '0');
+          if (!Number.isFinite(target) || target <= 0) return;
+          if (reduceMotion) { el.textContent = target.toLocaleString(); return; }
+          const dur = 1400;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const t = Math.min(1, (now - start) / dur);
+            const v = Math.round(target * easeOutCubic(t));
+            el.textContent = v.toLocaleString();
+            if (t < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        };
+        const cio = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              animateCount(entry.target as HTMLElement);
+              cio.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.4 });
+        document.querySelectorAll<HTMLElement>('[data-countup]').forEach(el => cio.observe(el));
+
+        // ---------- 5. 磁吸按钮 ----------
+        if (!reduceMotion) {
+          document.querySelectorAll<HTMLElement>('[data-magnetic]').forEach(btn => {
+            btn.addEventListener('mousemove', (e) => {
+              const r = btn.getBoundingClientRect();
+              const dx = (e.clientX - (r.left + r.width / 2)) * 0.25;
+              const dy = (e.clientY - (r.top + r.height / 2)) * 0.25;
+              btn.style.transform = `translate(${dx}px, ${dy}px)`;
+            });
+            btn.addEventListener('mouseleave', () => {
+              btn.style.transform = '';
+            });
+          });
+        }
+
+        // ---------- 6. Sparkle 粒子点击爆发 ----------
+        const emojis = ['✨','⭐','💫','🌟','✦'];
+        document.querySelectorAll<HTMLElement>('[data-sparkle]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            if (reduceMotion) return;
+            const cx = e.clientX;
+            const cy = e.clientY;
+            for (let i = 0; i < 12; i++) {
+              const s = document.createElement('span');
+              s.className = 'sparkle';
+              s.textContent = emojis[i % emojis.length];
+              s.style.left = `${cx}px`;
+              s.style.top = `${cy}px`;
+              s.style.transition = 'transform 800ms cubic-bezier(.2,.7,.2,1), opacity 800ms';
+              s.style.transform = 'translate(-50%, -50%) scale(0.6)';
+              s.style.opacity = '1';
+              document.body.appendChild(s);
+              const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.4;
+              const dist = 80 + Math.random() * 60;
+              requestAnimationFrame(() => {
+                s.style.transform = `translate(calc(-50% + ${Math.cos(angle) * dist}px), calc(-50% + ${Math.sin(angle) * dist}px)) scale(1.3) rotate(${Math.random() * 360}deg)`;
+                s.style.opacity = '0';
+              });
+              setTimeout(() => s.remove(), 850);
+            }
+          });
+        });
+
+        // ---------- 7. Konami 彩蛋（可选 — 整页震动） ----------
+        const seq: string[] = [];
+        const target = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+        document.addEventListener('keydown', (e) => {
+          seq.push(e.key);
+          if (seq.length > target.length) seq.shift();
+          if (target.every((k, i) => k === seq[i])) {
+            document.body.animate(
+              [{ transform: 'translateX(0)' }, { transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(0)' }],
+              { duration: 320, iterations: 2 }
+            );
+            seq.length = 0;
+          }
+        });
+      });
+    </script>
+
+    <ThemeSwitcher active="bento" />
+  </body>
+</html>

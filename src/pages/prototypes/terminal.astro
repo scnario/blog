@@ -1,0 +1,269 @@
+---
+// 风格原型 · Terminal · 全屏伪终端极客风
+// 黑 + 终端绿 + 琥珀 · Monospace · 打字机 + 扫描线 + glitch
+import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
+const posts = [
+  { slug: 'xmod', title: 'xmod.sh', tag: 'linux', size: '4.2K', date: '03-18', reads: 842 },
+  { slug: 'vaultwarden', title: 'vaultwarden.md', tag: 'self-host', size: '8.1K', date: '03-04', reads: 1203 },
+  { slug: 'create-blog', title: 'webhook-deploy.md', tag: 'devops', size: '3.0K', date: '02-22', reads: 567 },
+  { slug: 'astro-ssr', title: 'astro-perf-notes.md', tag: 'frontend', size: '6.7K', date: '02-10', reads: 1456 },
+  { slug: 'pocketbase-notes', title: 'pocketbase-boundary.md', tag: 'backend', size: '5.4K', date: '01-28', reads: 998 },
+];
+const diaries = [
+  { slug: '2026-04-20', title: 'first_motion_one.diary', mood: 'focus', date: '04-20' },
+  { slug: '2026-04-15', title: 'midnight_coffee.diary', mood: 'calm', date: '04-15' },
+  { slug: '2026-04-08', title: 'kill_vinyl_theme.diary', mood: 'hyped', date: '04-08' },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>~/blog $ ls -la</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <style is:global>
+      :root {
+        --bg: #0C0C0E;
+        --bg-alt: #141418;
+        --fg: #D4D4D8;
+        --green: #3DFF8A;
+        --amber: #FFBF5A;
+        --cyan: #5BD5E8;
+        --magenta: #FF6EC7;
+        --dim: #52525B;
+        --line: #27272A;
+      }
+      * { box-sizing: border-box; }
+      html,body { margin:0; padding:0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: 'JetBrains Mono', ui-monospace, 'Consolas', monospace;
+        font-size: 14px;
+        line-height: 1.65;
+        min-height: 100vh;
+      }
+      /* CRT 扫描线 + vignette */
+      body::before {
+        content:'';
+        position: fixed; inset: 0;
+        pointer-events: none; z-index: 100;
+        background:
+          repeating-linear-gradient(180deg, rgba(61,255,138,0.025) 0 2px, transparent 2px 4px),
+          radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+      }
+      body::after {
+        content:''; position: fixed; inset: 0; pointer-events: none; z-index: 101;
+        background: linear-gradient(rgba(61,255,138,0.06), transparent 10%);
+        animation: scan 7s linear infinite;
+      }
+      @keyframes scan {
+        0% { transform: translateY(-100vh); }
+        100% { transform: translateY(100vh); }
+      }
+
+      a { color: var(--cyan); text-decoration: none; }
+      a:hover { color: var(--green); text-decoration: underline; }
+
+      .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; position: relative; z-index: 2; }
+
+      /* 窗口标题栏 */
+      .titlebar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        background: var(--bg-alt); border: 1px solid var(--line);
+        border-radius: 8px 8px 0 0;
+        font-size: 12px; color: var(--dim);
+      }
+      .tb-dot { width: 11px; height: 11px; border-radius: 999px; }
+      .tb-close { background: #FF5F56; }
+      .tb-min { background: #FFBD2E; }
+      .tb-max { background: #27C93F; }
+      .tb-title { margin-left: 12px; font-weight: 500; }
+      .panel {
+        background: var(--bg-alt);
+        border: 1px solid var(--line); border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 24px;
+        margin-bottom: 28px;
+        box-shadow: 0 0 40px rgba(61,255,138,0.04);
+      }
+
+      /* prompt */
+      .prompt { color: var(--green); }
+      .prompt::before { content: '$ '; }
+      .path { color: var(--amber); }
+      .user { color: var(--magenta); }
+      .comment { color: var(--dim); }
+      .flag { color: var(--cyan); }
+      .caret { display: inline-block; width: 10px; height: 1.1em; background: var(--green); vertical-align: -2px; margin-left: 4px; animation: blink 1s steps(2) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+
+      /* ASCII banner */
+      pre.ascii {
+        color: var(--green);
+        font-size: 11px;
+        line-height: 1.15;
+        margin: 0 0 6px;
+        text-shadow: 0 0 6px rgba(61,255,138,0.55), 0 0 18px rgba(61,255,138,0.25);
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      /* 文件列表 */
+      table.ls { width: 100%; border-collapse: collapse; font-size: 13px; }
+      table.ls td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+      table.ls tr { opacity: 0; transform: translateX(-6px); animation: slidein 500ms cubic-bezier(.2,.7,.2,1) forwards; }
+      table.ls tr:nth-child(1) { animation-delay: 50ms; }
+      table.ls tr:nth-child(2) { animation-delay: 120ms; }
+      table.ls tr:nth-child(3) { animation-delay: 190ms; }
+      table.ls tr:nth-child(4) { animation-delay: 260ms; }
+      table.ls tr:nth-child(5) { animation-delay: 330ms; }
+      @keyframes slidein { to { opacity: 1; transform: translateX(0); } }
+      table.ls tr:hover td { background: rgba(61,255,138,0.05); }
+      table.ls tr:hover td a { color: var(--green); }
+      table.ls .perm { color: var(--dim); }
+      table.ls .size { color: var(--amber); text-align: right; }
+      table.ls .date { color: var(--dim); }
+
+      /* Glitch */
+      .glitch { position: relative; display: inline-block; }
+      .glitch:hover { animation: glitch 380ms steps(2) infinite; }
+      @keyframes glitch {
+        0% { transform: translate(0); text-shadow: 0 0 0 var(--magenta); }
+        25% { transform: translate(-1px, 1px); text-shadow: 2px 0 0 var(--magenta), -2px 0 0 var(--cyan); }
+        50% { transform: translate(1px, -1px); text-shadow: -2px 0 0 var(--magenta), 2px 0 0 var(--cyan); }
+        75% { transform: translate(-1px, -1px); text-shadow: 2px 0 0 var(--cyan), -2px 0 0 var(--magenta); }
+      }
+
+      /* 状态灯 */
+      .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 3px; font-size: 11px; border: 1px solid currentColor; }
+      .b-green { color: var(--green); }
+      .b-amber { color: var(--amber); }
+      .b-cyan { color: var(--cyan); }
+
+      .tip { margin-top: 40px; padding: 14px 18px; border: 1px dashed var(--amber); color: var(--amber); font-size: 12px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- 标题栏 -->
+      <div class="titlebar">
+        <span class="tb-dot tb-close"></span>
+        <span class="tb-dot tb-min"></span>
+        <span class="tb-dot tb-max"></span>
+        <span class="tb-title">twj0@garden: ~/blog — zsh — 120×32</span>
+      </div>
+      <div class="panel">
+        <!-- ASCII Banner -->
+        <pre class="ascii">
+    ____  _       _ __        __   ______                __
+   / __ \(_)___ _(_) /_____ _/ /  / ____/___ __________/ /__  ____
+  / / / / / __ `/ / __/ __ `/ /  / / __/ __ `/ ___/ __  / _ \/ __ \
+ / /_/ / / /_/ / / /_/ /_/ / /  / /_/ / /_/ / /  / /_/ /  __/ / / /
+/_____/_/\__, /_/\__/\__,_/_/   \____/\__,_/_/   \__,_/\___/_/ /_/
+        /____/                                                     </pre>
+        <div class="comment">// day by day, life by life. · twj0 &lt;hello@example.com&gt; · since 2023</div>
+        <div style="margin-top: 10px;">
+          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt">whoami && uname -r && uptime</span>
+        </div>
+        <div style="padding-left: 18px; margin-top: 4px; font-size: 12px;">
+          <div>twj0</div>
+          <div>6.12.4-xanmod1 #1 SMP PREEMPT_DYNAMIC</div>
+          <div>up <span style="color: var(--green);">312 days</span>, load avg: 0.04 0.09 0.12</div>
+        </div>
+      </div>
+
+      <!-- posts -->
+      <div class="titlebar">
+        <span class="tb-dot tb-close"></span>
+        <span class="tb-dot tb-min"></span>
+        <span class="tb-dot tb-max"></span>
+        <span class="tb-title">~/blog/posts/</span>
+      </div>
+      <div class="panel">
+        <div>
+          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt">ls -la posts/ <span class="flag">--sort=time</span></span>
+        </div>
+        <div class="comment" style="margin: 6px 0 12px;">total {posts.length} · published</div>
+        <table class="ls">
+          {posts.map(p => (
+            <tr>
+              <td class="perm">-rw-r--r--</td>
+              <td class="perm">twj0</td>
+              <td class="size">{p.size}</td>
+              <td class="date">{p.date}</td>
+              <td>
+                <a href={`/posts/${p.slug}`} class="glitch" style="color: var(--cyan);">{p.title}</a>
+                <span class="badge b-green" style="margin-left: 10px;"># {p.tag}</span>
+              </td>
+              <td class="date" style="text-align: right;">{p.reads} reads</td>
+            </tr>
+          ))}
+        </table>
+        <div style="margin-top: 14px;">
+          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt"><span class="caret"></span></span>
+        </div>
+      </div>
+
+      <!-- diaries -->
+      <div class="titlebar">
+        <span class="tb-dot tb-close"></span>
+        <span class="tb-dot tb-min"></span>
+        <span class="tb-dot tb-max"></span>
+        <span class="tb-title">~/blog/diary/ <span style="color: var(--amber);">[PRIVATE]</span></span>
+      </div>
+      <div class="panel">
+        <div>
+          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt">cat diary/*.diary | head -20</span>
+        </div>
+        <div class="comment" style="margin: 6px 0 14px;">// {diaries.length} entries · chmod 600 by default</div>
+        {diaries.map(d => (
+          <div style="padding: 10px 0; border-bottom: 1px dashed var(--line);">
+            <div>
+              <span class="comment">[{d.date}]</span>
+              <a href={`/diary/${d.slug}`} class="glitch" style="color: var(--amber); margin-left: 10px;">{d.title}</a>
+              <span class="badge b-cyan" style="margin-left: 10px;">mood={d.mood}</span>
+              <span class="badge b-amber" style="margin-left: 6px;">private</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Music + sys info -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <div class="titlebar"><span class="tb-dot tb-close"></span><span class="tb-dot tb-min"></span><span class="tb-dot tb-max"></span><span class="tb-title">mpd --now-playing</span></div>
+          <div class="panel" style="margin-bottom: 0;">
+            <div><span class="prompt">mpc current</span></div>
+            <div style="padding-left: 14px; margin-top: 6px;"><span style="color: var(--green);">♪</span> Lo-fi Evening <span class="comment">— Pixabay</span></div>
+            <div style="padding-left: 14px; font-size: 12px; color: var(--dim);">[playing] #4/12 · 01:42/03:56</div>
+            <div style="margin-top: 10px; height: 3px; background: var(--line); border-radius: 2px;">
+              <div style="width: 42%; height: 100%; background: var(--green); border-radius: 2px; box-shadow: 0 0 6px var(--green);"></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="titlebar"><span class="tb-dot tb-close"></span><span class="tb-dot tb-min"></span><span class="tb-dot tb-max"></span><span class="tb-title">neofetch</span></div>
+          <div class="panel" style="margin-bottom: 0; font-size: 12px;">
+            <div><span style="color: var(--green);">OS</span>: Astro 6 + PocketBase</div>
+            <div><span style="color: var(--green);">Kernel</span>: @astrojs/node standalone</div>
+            <div><span style="color: var(--green);">Packages</span>: 285</div>
+            <div><span style="color: var(--green);">Posts</span>: 5 · <span style="color: var(--amber);">Diaries</span>: 3 private</div>
+            <div><span style="color: var(--green);">Uptime</span>: 312 days</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tip">
+        <strong>&gt;_ Terminal 原型</strong> — 极客浓度拉满。适合人设强化，但对长文阅读不友好；博客正文可考虑进入后切换更舒适的字体。不推荐用于日记气质的内容。
+      </div>
+    </div>
+    <ThemeSwitcher active="terminal" />
+  </body>
+</html>

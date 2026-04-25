@@ -1,0 +1,105 @@
+---
+/**
+ * 笔记详情 — 短卡风格，不强制 TOC
+ * 笔记的"正文"主要在 excerpt，但若 PB 里 content 有内容也一并渲染。
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getNoteBySlug } from '../../lib/queries';
+import { marked } from 'marked';
+import pb from '../../lib/pb';
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/notes');
+
+const note = await getNoteBySlug(slug);
+if (!note) return Astro.redirect('/notes');
+
+// 笔记可能没有 content 字段，只有 excerpt；但若有 content 优先渲染
+let rawContent = '';
+try {
+  const r = await pb.collection('posts').getOne(note.id);
+  rawContent = (r as any).content || '';
+} catch {}
+
+const html = rawContent ? marked.parse(rawContent) : `<p>${note.excerpt}</p>`;
+
+function fmtDate(s: string): string {
+  if (!s) return '';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10);
+}
+---
+
+<Layout title={`${note.title} · 笔记`} showSidebar={true} showToc={false}>
+  <div style="margin-bottom: 16px;">
+    <a href="/notes" style="font-family: 'JetBrains Mono', monospace; color: #6B5BFF; text-decoration: none; font-size: 13px;">
+      &lt; 返回笔记列表
+    </a>
+  </div>
+
+  <article class="note-card">
+    <div class="note-meta">
+      <span class="emoji">{note.emoji}</span>
+      <span class="tag">{note.tag}</span>
+      <span class="date mono">{fmtDate(note.created)}</span>
+    </div>
+    <h1 class="note-title">{note.title}</h1>
+    <div class="note-body" set:html={html} />
+  </article>
+
+  <style>
+    .note-card {
+      padding: 32px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #FFF9F0 0%, #FFE9C8 100%);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+    .note-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #52525B;
+    }
+    .note-meta .emoji { font-size: 28px; }
+    .note-meta .tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.6);
+      font-weight: 600;
+      color: #6B5BFF;
+    }
+    .note-meta .date { color: #8A8A94; font-size: 11px; }
+    .note-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      margin: 0 0 16px;
+    }
+    .note-body {
+      font-size: 15px;
+      line-height: 1.75;
+      color: #1A1A1F;
+    }
+    .note-body p { margin: 12px 0; }
+    .note-body code {
+      background: rgba(0,0,0,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+    }
+    .note-body pre {
+      background: #1A1A1F;
+      color: #E5E7EB;
+      padding: 14px;
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+    .note-body pre code { background: transparent; padding: 0; }
+    .note-body a { color: #6B5BFF; text-decoration: underline; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  </style>
+</Layout>

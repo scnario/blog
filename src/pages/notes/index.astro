@@ -1,0 +1,50 @@
+---
+/**
+ * 笔记列表 — type='note' 过滤
+ * 在 PB schema 升级（posts 表加 type 字段）前会显示空状态
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getLatestNotes } from '../../lib/queries';
+
+const notes = await getLatestNotes(50);
+
+function fmtDate(s: string): string {
+  if (!s) return '';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10);
+}
+---
+
+<Layout title="笔记 | 数字花园">
+  <header style="margin-bottom: 28px;">
+    <div class="mono" style="font-size: 11px; color: #8A8A94; letter-spacing: 0.08em; margin-bottom: 8px;">NOTES</div>
+    <h1 style="font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -0.02em; margin: 0;">笔记</h1>
+    <p style="color: #52525B; margin: 8px 0 0;">短小灵感与技术片段 · 共 {notes.length} 条</p>
+  </header>
+
+  {notes.length === 0 ? (
+    <div style="padding: 48px 24px; text-align: center; background: #FFFFFF; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.06);">
+      <div style="font-size: 48px; margin-bottom: 12px;">💡</div>
+      <div style="font-size: 16px; color: #52525B;">还没有笔记</div>
+      <div style="font-size: 12px; color: #8A8A94; margin-top: 6px; line-height: 1.6;">
+        需要先在 PB Admin 给 <code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">posts</code> 表加 <code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">type</code> 字段（select: article / note），<br/>然后到控制台创建 type=note 的短卡。
+      </div>
+    </div>
+  ) : (
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
+      {notes.map(n => (
+        <a href={`/notes/${n.slug}`} style="display: block; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, #FFF9F0 0%, #FFE9C8 100%); text-decoration: none; color: inherit; box-shadow: 0 4px 12px rgba(0,0,0,0.04); transition: transform 220ms;">
+          <div style="font-size: 22px; margin-bottom: 8px;">{n.emoji}</div>
+          <div style="font-weight: 700; font-size: 14px; line-height: 1.35; margin-bottom: 6px;">{n.title}</div>
+          <div style="font-size: 12px; color: #52525B; line-height: 1.55;">{n.excerpt}</div>
+          <div class="mono" style="font-size: 10px; color: #8A8A94; margin-top: 12px;">{fmtDate(n.created)}</div>
+        </a>
+      ))}
+    </div>
+  )}
+
+  <style>
+    a[href^="/notes/"]:hover { transform: translateY(-3px); }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  </style>
+</Layout>

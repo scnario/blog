@@ -1,0 +1,188 @@
+---
+const styles = [
+  {
+    slug: 'bento',
+    name: 'Bento Grid (动画增强)',
+    tagline: '明亮瓷砖 · 3D 倾斜 / 计数 / 磁吸 / 粒子',
+    bg: 'linear-gradient(135deg, #A8E6CF 0%, #FFE082 50%, #C5A3FF 100%)',
+    fg: '#0A0A0A',
+    fit: '首页信息聚合、多元内容（已确认基线）',
+    not: '深度技术氛围弱',
+    weight: '中',
+  },
+  {
+    slug: 'bento-classic',
+    name: 'Bento Classic',
+    tagline: '基线副本（仅 stagger + glow）',
+    bg: 'linear-gradient(135deg, #FFFFFF 0%, #F4ECDC 50%, #C5A3FF 100%)',
+    fg: '#1A1A1F',
+    fit: '需要更克制动效时的回退选项',
+    not: '不再扩展新动画',
+    weight: '低',
+  },
+  {
+    slug: 'paper',
+    name: 'Paper Zen',
+    tagline: '纸感 / 和风 / 日记气质浓厚',
+    bg: 'linear-gradient(135deg, #F4ECDC 0%, #E8DDC5 100%)',
+    fg: '#2B2319',
+    fit: '日记、长文、慢阅读',
+    not: '工具/console 等功能页不适配',
+    weight: '高（双主题）',
+  },
+  {
+    slug: 'terminal',
+    name: 'Terminal',
+    tagline: '伪终端极客风，Monospace + 扫描线',
+    bg: 'radial-gradient(ellipse at center, #0C0C0E 40%, #000 100%)',
+    fg: '#3DFF8A',
+    fit: '纯技术、强人设、代码优先',
+    not: '生活随笔/日记违和',
+    weight: '中',
+  },
+  {
+    slug: 'aurora',
+    name: 'Aurora Glass',
+    tagline: '深色极光 + 精致玻璃（Hi-Fi 升级版）',
+    bg: 'radial-gradient(ellipse at 30% 40%, #A259FF 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, #5BD5E8 0%, transparent 50%), #070914',
+    fg: '#F5F7FF',
+    fit: '视觉炫技、保留原审美',
+    not: '长文阅读稍累、移动端性能',
+    weight: '低（延续现有）',
+  },
+  {
+    slug: 'magazine',
+    name: 'Magazine Editorial',
+    tagline: '黑白杂志大字号，阅读感最强',
+    bg: 'repeating-linear-gradient(90deg, #FFFFFF 0 80%, #C8102E 80% 82%, #FFFFFF 82% 100%)',
+    fg: '#0A0A0A',
+    fit: '长文博客正文 Layout 候选',
+    not: '首页丰富感弱',
+    weight: '中',
+  },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>原型选型中心 · 数字花园</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <style is:global>
+      * { box-sizing: border-box; }
+      html,body { margin:0; padding:0; }
+      body {
+        background: #0E0F12;
+        color: #FAFAF7;
+        font-family: 'Inter', -apple-system, sans-serif;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 48px 24px; }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      h1 { font-size: clamp(32px, 5vw, 48px); margin: 0 0 8px; letter-spacing: -0.02em; font-weight: 800; }
+      .lede { color: #A1A1AA; font-size: 16px; line-height: 1.6; max-width: 640px; }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; margin-top: 40px; }
+      .card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 20px;
+        padding: 0;
+        background: #1A1B20;
+        border: 1px solid rgba(255,255,255,0.06);
+        transition: transform 320ms cubic-bezier(.2,.8,.2,1), box-shadow 320ms, border-color 320ms;
+        text-decoration: none; color: inherit;
+        display: flex; flex-direction: column;
+      }
+      .card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.15); }
+      .card-preview {
+        height: 180px;
+        position: relative;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+      }
+      .card-preview-label {
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        text-align: center;
+        padding: 0 20px;
+      }
+      .card-body { padding: 22px; }
+      .card-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+      .card-tag { font-size: 10px; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #A1A1AA; letter-spacing: 0.06em; }
+      .card-tagline { font-size: 13px; color: #A1A1AA; margin: 6px 0 14px; line-height: 1.55; }
+      .card-meta { display: flex; gap: 12px; font-size: 11px; color: #6F7694; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+      .card-meta strong { color: #D4D4D8; font-weight: 600; }
+      .pill { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); }
+
+      .open-hint {
+        position: absolute; right: 14px; top: 14px;
+        background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+        padding: 4px 10px; border-radius: 999px;
+        font-size: 10px; color: white; letter-spacing: 0.08em;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+
+      .note { margin-top: 40px; padding: 20px 24px; background: #1A1B20; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; font-size: 13px; line-height: 1.7; color: #A1A1AA; }
+      .note strong { color: #FAFAF7; }
+      .note code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+      .check { display: inline-block; width: 14px; height: 14px; border-radius: 999px; background: #3DFF8A; box-shadow: 0 0 8px #3DFF8A; margin-right: 6px; vertical-align: middle; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+        <span class="mono" style="font-size: 11px; letter-spacing: 0.08em; color: #6F7694;">P0 · STYLE PROTOTYPES</span>
+      </div>
+      <h1>风格选型中心</h1>
+      <p class="lede">
+        5 个候选方向，每个都是独立的完整首页原型，含 mock 数据、动画效果与适用场景说明。点开任意一张卡打开对应原型。
+        <br/><span class="mono" style="font-size: 12px; color: #6F7694;">建议三种以上屏宽（桌面 + 移动）都看一遍。</span>
+      </p>
+
+      <div class="grid">
+        {styles.map(s => (
+          <a href={`/prototypes/${s.slug}`} class="card">
+            <div class="card-preview" style={`background: ${s.bg};`}>
+              <div class="card-preview-label" style={`color: ${s.fg}; font-family: ${s.slug === 'terminal' ? "'JetBrains Mono', monospace" : s.slug === 'magazine' ? "'Playfair Display', serif" : s.slug === 'paper' ? "'Source Serif 4', serif" : "'Inter', sans-serif"};`}>
+                {s.slug === 'terminal' ? `$ ${s.name.toLowerCase()}` : s.slug === 'magazine' ? s.name.split(' ').map(w => <div>{w}</div>) : s.name}
+              </div>
+              <div class="open-hint mono">OPEN →</div>
+            </div>
+            <div class="card-body">
+              <div class="card-title">
+                <span>{s.name}</span>
+                <span class="card-tag mono">{s.slug}</span>
+              </div>
+              <div class="card-tagline">{s.tagline}</div>
+              <div class="card-meta">
+                <div><strong>👍 适合</strong><br/><span>{s.fit}</span></div>
+                <div><strong>👎 不适合</strong><br/><span>{s.not}</span></div>
+                <div><strong>🔨 改造量</strong><br/><span class="pill">{s.weight}</span></div>
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <div class="note">
+        <strong>🧪 使用说明</strong>
+        <ul style="margin: 8px 0 4px; padding-left: 20px;">
+          <li><span class="check"></span> 已批准：<code>Bento Grid</code> 作为基线风格（首页 + 博客）</li>
+          <li><strong>Bento 增强版</strong>（<code>/prototypes/bento</code>）已加入：标题逐字入场 / 卡片 3D 倾斜跟手 / 数字滚动 / 磁吸按钮 / 粒子点击 / Konami 彩蛋（<span class="mono">↑↑↓↓←→←→BA</span>）</li>
+          <li><strong>Bento Classic</strong>（<code>/prototypes/bento-classic</code>）保留为基线副本，方便随时回退或对比</li>
+          <li>右下角浮动的 <strong>🎨 主题切换器</strong> 已通就在所有原型页之间快速切换；点击选项会写 <code>site_theme</code> cookie，未来真正整合后服务端就靠它选主题</li>
+          <li>架构：<code>src/lib/theme.ts</code> 是单一真相源，<code>ThemeSwitcher.astro</code> 读它渲染面板，每个主题声明它支持哪些 route 类型（home/post/diary/tool）；不支持时自动回落 bento</li>
+          <li>下一步：进入 <code>P-Theme</code> 阶段把每个 prototype 拆成 <code>{'src/themes/<slug>/{home,post,diary}.astro'}</code>，让生产路由按 cookie 选主题渲染</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>

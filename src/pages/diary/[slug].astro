@@ -1,0 +1,100 @@
+---
+/**
+ * 日记详情 — 仅渲染 is_public=true 的条目
+ * accent 换奶油黄系
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getDiaryBySlug } from '../../lib/queries';
+import { marked } from 'marked';
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/diary');
+
+const diary = await getDiaryBySlug(slug);
+if (!diary) return Astro.redirect('/diary');
+
+const html = marked.parse(diary.content || '');
+
+function fmtDate(s: string): string {
+  if (!s) return '';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10);
+}
+
+const moodEmoji: Record<string, string> = {
+  '平静': '😌',
+  '兴奋': '🤩',
+  '低落': '😔',
+  '专注': '🧐',
+};
+---
+
+<Layout title={`${diary.title} · 日记`} showSidebar={true} showToc={false}>
+  <div style="margin-bottom: 16px;">
+    <a href="/diary" style="font-family: 'JetBrains Mono', monospace; color: #B7791F; text-decoration: none; font-size: 13px;">
+      &lt; 返回日记时间线
+    </a>
+  </div>
+
+  <article class="diary-card">
+    <div class="diary-meta">
+      <span class="mood">{moodEmoji[diary.mood] || '🌱'} {diary.mood}</span>
+      {diary.weather && <span class="weather">· {diary.weather}</span>}
+      <span class="date mono">{fmtDate(diary.date || diary.created)}</span>
+    </div>
+    <h1 class="diary-title">{diary.title}</h1>
+    <div class="diary-body" set:html={html} />
+  </article>
+
+  <style>
+    .diary-card {
+      padding: 36px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #FFFCEB 0%, #FFE082 100%);
+      box-shadow: 0 8px 24px rgba(255, 196, 0, 0.12);
+      border: 1px solid rgba(255, 224, 130, 0.4);
+    }
+    .diary-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #52525B;
+    }
+    .mood { font-weight: 600; }
+    .weather { color: #8A8A94; }
+    .date { margin-left: auto; font-size: 11px; color: #8A8A94; }
+    .diary-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.3;
+      margin: 0 0 20px;
+      color: #2A2A2F;
+    }
+    .diary-body {
+      font-size: 16px;
+      line-height: 1.85;
+      color: #1A1A1F;
+    }
+    .diary-body p { margin: 14px 0; }
+    .diary-body code {
+      background: rgba(0,0,0,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9em;
+    }
+    .diary-body blockquote {
+      border-left: 4px solid #FFB347;
+      padding: 4px 16px;
+      margin: 14px 0;
+      color: #52525B;
+      background: rgba(255,179,71,0.08);
+      border-radius: 0 8px 8px 0;
+    }
+    .diary-body a { color: #B7791F; text-decoration: underline; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  </style>
+</Layout>

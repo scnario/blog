@@ -1,0 +1,205 @@
+---
+/**
+ * 顶部导航条 — 全站统一入口
+ *
+ * 行为：
+ * - sticky 在顶部，玻璃模糊背景
+ * - active state 由当前路径前缀决定，下划线用主题色
+ * - 桌面端水平排列；< 768px 折叠成 <details> 抽屉（无需 JS 框架）
+ * - 右侧：齿轮图标 → /console（管理员入口）
+ *
+ * ThemeSwitcher 仍以浮动胶囊形式存在右下角（已在 Layout 中注入），
+ * 因此 TopNav 不再重复挂载主题切换控件。
+ */
+
+interface Props {
+  /** 当前路径，用于 active state */
+  pathname?: string;
+  /** 站点标题（来自 settings） */
+  brand?: string;
+}
+
+const { pathname = '/', brand = '数字花园' } = Astro.props as Props;
+
+const links = [
+  { href: '/',         label: '首页',  match: (p: string) => p === '/' },
+  { href: '/articles', label: '博客',  match: (p: string) => p.startsWith('/articles') || p.startsWith('/matrix') },
+  { href: '/notes',    label: '笔记',  match: (p: string) => p.startsWith('/notes') },
+  { href: '/diary',    label: '日记',  match: (p: string) => p.startsWith('/diary') },
+  { href: '/correct',  label: '工具',  match: (p: string) => p.startsWith('/correct') || p.startsWith('/tools') },
+];
+---
+
+<header class="topnav" data-pathname={pathname}>
+  <div class="topnav-inner">
+    <a href="/" class="brand">
+      <span class="brand-icon">🌱</span>
+      <span class="brand-name">{brand}</span>
+    </a>
+
+    <!-- 桌面导航 -->
+    <nav class="nav-desktop" aria-label="Primary">
+      {links.map(l => (
+        <a
+          href={l.href}
+          class:list={['nav-link', { active: l.match(pathname) }]}
+        >{l.label}</a>
+      ))}
+    </nav>
+
+    <div class="nav-actions">
+      <a href="/console" class="gear" aria-label="管理控制台" title="管理控制台">⚙</a>
+    </div>
+
+    <!-- 移动端抽屉 -->
+    <details class="nav-mobile">
+      <summary aria-label="切换菜单">
+        <span class="hamburger"></span>
+      </summary>
+      <nav class="drawer" aria-label="Primary mobile">
+        {links.map(l => (
+          <a
+            href={l.href}
+            class:list={['drawer-link', { active: l.match(pathname) }]}
+          >{l.label}</a>
+        ))}
+        <a href="/console" class="drawer-link">⚙ 控制台</a>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<style is:global>
+  .topnav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .topnav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 16px;
+    color: #1A1A1F;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .brand-icon {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #C5A3FF, #FF8A80);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .nav-desktop {
+    display: flex; gap: 4px;
+    flex: 1;
+    justify-content: center;
+  }
+  .nav-link {
+    position: relative;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 14px; font-weight: 500;
+    color: #52525B;
+    text-decoration: none;
+    transition: color 180ms, background 180ms;
+  }
+  .nav-link:hover { color: #1A1A1F; background: rgba(0,0,0,0.04); }
+  .nav-link.active {
+    color: #1A1A1F;
+    font-weight: 600;
+  }
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    left: 14px; right: 14px; bottom: 2px;
+    height: 2px;
+    background: var(--themeColor, #6B5BFF);
+    border-radius: 2px;
+  }
+  .nav-actions {
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .gear {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.04);
+    color: #52525B;
+    text-decoration: none;
+    font-size: 16px;
+    transition: transform 220ms cubic-bezier(.2,.7,.2,1), background 200ms, color 200ms;
+  }
+  .gear:hover {
+    transform: rotate(60deg);
+    background: rgba(0,0,0,0.08);
+    color: #1A1A1F;
+  }
+
+  /* === 移动端抽屉 === */
+  .nav-mobile { display: none; }
+  .nav-mobile > summary {
+    list-style: none;
+    cursor: pointer;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.04);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .nav-mobile > summary::-webkit-details-marker { display: none; }
+  .hamburger {
+    display: block; position: relative;
+    width: 18px; height: 2px;
+    background: #1A1A1F; border-radius: 1px;
+  }
+  .hamburger::before, .hamburger::after {
+    content: ''; position: absolute; left: 0; width: 18px; height: 2px;
+    background: #1A1A1F; border-radius: 1px;
+  }
+  .hamburger::before { top: -6px; }
+  .hamburger::after  { top: 6px; }
+
+  .drawer {
+    position: absolute;
+    top: calc(100% + 8px); right: 16px; left: 16px;
+    background: rgba(255,255,255,0.98);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .drawer-link {
+    padding: 12px 14px;
+    border-radius: 10px;
+    color: #1A1A1F;
+    text-decoration: none;
+    font-size: 15px; font-weight: 500;
+    transition: background 160ms;
+  }
+  .drawer-link:hover, .drawer-link.active { background: rgba(0,0,0,0.05); }
+  .drawer-link.active {
+    color: var(--themeColor, #6B5BFF);
+    font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    .nav-desktop { display: none; }
+    .nav-mobile { display: block; }
+    .topnav-inner { gap: 12px; }
+  }
+</style>

@@ -1,0 +1,66 @@
+---
+/**
+ * 博客详情页 — Markdown 渲染 + TOC 抽取
+ * 移植自 src/pages/matrix/[slug].astro
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getArticleBySlug } from '../../lib/queries';
+import { marked } from 'marked';
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/articles');
+
+const article = await getArticleBySlug(slug);
+if (!article) return Astro.redirect('/articles');
+
+const extractedHeadings: Array<{ depth: number; slug: string; text: string }> = [];
+const renderer = new marked.Renderer();
+
+renderer.heading = function (textOrObj: any, level: any) {
+  const actualText = typeof textOrObj === 'object' ? textOrObj.text : textOrObj;
+  const actualLevel = typeof textOrObj === 'object' ? textOrObj.depth : level;
+  const anchor = actualText.toLowerCase()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^\w\u4e00-\u9fa5-]/g, '');
+  extractedHeadings.push({ depth: actualLevel, slug: anchor, text: actualText });
+  return `<h${actualLevel} id="${anchor}" class="scroll-mt-24" style="font-weight: 700; margin: 28px 0 12px;">${actualText}</h${actualLevel}>\n`;
+};
+
+marked.use({ renderer });
+
+const parsedContent = marked.parse(article.content);
+const mockFrontmatter = { title: article.title, date: article.created };
+---
+
+<Layout title={`${article.title} · 博客`} frontmatter={mockFrontmatter} headings={extractedHeadings} showToc={true}>
+  <div style="margin-bottom: 20px;">
+    <a href="/articles" style="font-family: 'JetBrains Mono', monospace; color: #6B5BFF; text-decoration: none; font-size: 13px;">
+      &lt; 返回博客列表
+    </a>
+  </div>
+
+  <div class="article-body" set:html={parsedContent} />
+
+  <style>
+    .article-body {
+      max-width: 100%;
+      line-height: 1.75;
+      font-size: 16px;
+      color: #1A1A1F;
+    }
+    .article-body p { margin: 16px 0; }
+    .article-body code { background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+    .article-body pre { background: #1A1A1F; color: #E5E7EB; padding: 16px; border-radius: 12px; overflow-x: auto; }
+    .article-body pre code { background: transparent; padding: 0; }
+    .article-body a { color: #6B5BFF; text-decoration: underline; }
+    .article-body ul, .article-body ol { margin: 16px 0; padding-left: 28px; }
+    .article-body blockquote {
+      border-left: 4px solid #C5A3FF;
+      padding: 4px 16px;
+      margin: 16px 0;
+      color: #52525B;
+      background: rgba(197,163,255,0.06);
+      border-radius: 0 8px 8px 0;
+    }
+  </style>
+</Layout>

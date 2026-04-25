@@ -1,0 +1,142 @@
+---
+/**
+ * 日记时间线 — 仅显示 is_public=true 的条目
+ * 按月份分组；diaries 表不存在时显示空状态
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getRecentDiaries } from '../../lib/queries';
+import type { Diary } from '../../lib/queries';
+
+const diaries = await getRecentDiaries(200);
+
+// 按 yyyy-MM 分组
+function groupByMonth(items: Diary[]): Map<string, Diary[]> {
+  const map = new Map<string, Diary[]>();
+  for (const d of items) {
+    const dt = new Date(d.date || d.created);
+    const key = Number.isNaN(dt.getTime())
+      ? '未知'
+      : `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(d);
+  }
+  return map;
+}
+const grouped = groupByMonth(diaries);
+
+function fmtDate(s: string): string {
+  if (!s) return '';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10);
+}
+
+function makeExcerpt(s: string): string {
+  return (s || '').slice(0, 120).replace(/[#*`>\-]/g, '') + '…';
+}
+
+const moodEmoji: Record<string, string> = {
+  '平静': '😌',
+  '兴奋': '🤩',
+  '低落': '😔',
+  '专注': '🧐',
+};
+---
+
+<Layout title="日记 | 数字花园" showSidebar={true} showToc={false}>
+  <header style="margin-bottom: 32px;">
+    <div class="mono" style="font-size: 11px; color: #8A8A94; letter-spacing: 0.08em; margin-bottom: 8px;">DIARY</div>
+    <h1 style="font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -0.02em; margin: 0;">日记</h1>
+    <p style="color: #52525B; margin: 8px 0 0;">日常碎片与心情记录 · 共 {diaries.length} 篇公开</p>
+  </header>
+
+  {diaries.length === 0 ? (
+    <div style="padding: 48px 24px; text-align: center; background: linear-gradient(135deg,#FFFCEB 0%,#FFE08233 100%); border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.06);">
+      <div style="font-size: 48px; margin-bottom: 12px;">📔</div>
+      <div style="font-size: 16px; color: #52525B;">还没有公开日记</div>
+      <div style="font-size: 12px; color: #8A8A94; margin-top: 6px; line-height: 1.6;">
+        需要先在 PB Admin 创建 <code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">diaries</code> 表，<br/>
+        然后到 <a href="/console" style="color:#6B5BFF;">控制台</a> 创建日记并勾选「公开」。
+      </div>
+    </div>
+  ) : (
+    <div class="timeline">
+      {[...grouped.entries()].map(([month, items]) => (
+        <section class="month-block">
+          <h2 class="month-label mono">{month}</h2>
+          <ul class="entries">
+            {items.map(d => (
+              <li class="entry">
+                <a href={`/diary/${d.slug}`}>
+                  <div class="entry-meta">
+                    <span class="dot" />
+                    <span class="mood">{moodEmoji[d.mood] || '🌱'} {d.mood}</span>
+                    {d.weather && <span class="weather">· {d.weather}</span>}
+                    <span class="date mono">{fmtDate(d.date || d.created)}</span>
+                  </div>
+                  <h3 class="entry-title">{d.title}</h3>
+                  <p class="entry-excerpt">{makeExcerpt(d.content)}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )}
+
+  <style>
+    .timeline { position: relative; padding-left: 8px; }
+    .month-block { margin-bottom: 36px; }
+    .month-label {
+      font-size: 12px;
+      color: #8A8A94;
+      letter-spacing: 0.1em;
+      margin: 0 0 14px;
+    }
+    .entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+    .entry a {
+      display: block;
+      padding: 18px 22px;
+      border-radius: 18px;
+      background: linear-gradient(135deg,#FFFCEB 0%,#FFF6CF 100%);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms;
+      border: 1px solid rgba(255, 224, 130, 0.4);
+    }
+    .entry a:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(255, 196, 0, 0.2);
+    }
+    .entry-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #52525B;
+      margin-bottom: 8px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #FFB347;
+      box-shadow: 0 0 0 4px rgba(255,179,71,0.18);
+    }
+    .mood { font-weight: 600; }
+    .weather { color: #8A8A94; }
+    .date { margin-left: auto; font-size: 11px; color: #8A8A94; }
+    .entry-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 0 0 6px;
+    }
+    .entry-excerpt {
+      margin: 0;
+      font-size: 13px;
+      color: #52525B;
+      line-height: 1.6;
+    }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  </style>
+</Layout>

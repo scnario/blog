@@ -1,16 +1,453 @@
 ---
+/**
+ * 生产版 Bento 首页
+ *
+ * 数据：通过 src/lib/queries.ts 查 PB（带 5 分钟缓存 + 字段缺失回退）
+ * 布局：通过 src/lib/bento-presets.ts 选预设（默认 / 文章优先 / 日记焦点）
+ * 动画：与原型 /prototypes/bento.astro 一致（IntersectionObserver / 3D tilt / countup / magnetic / sparkle）
+ *
+ * 现阶段（PB schema 还没完全升级）的兼容策略：
+ * - notes 取不到时（type 字段没建）= 0 条，notes 瓷砖显示空状态提示
+ * - diaries 取不到时（表没建）= 0 条
+ * - settings 字段缺失时回退到默认值
+ * 所有兜底都在 queries.ts 内部完成，本页面无需 try/catch
+ */
 import Layout from '../layouts/Layout.astro';
+import {
+  getSettings,
+  getLatestArticles,
+  getLatestNotes,
+  getRecentDiaries,
+  getTagCloud,
+} from '../lib/queries';
+import { resolvePreset } from '../lib/bento-presets';
+
+const settings = await getSettings();
+const articles = await getLatestArticles(8);     // 大卡 1 + 次新 3 + 富余
+const notes    = await getLatestNotes(3);
+const diaries  = await getRecentDiaries(3);
+const tags     = await getTagCloud(8);
+
+const preset = resolvePreset(settings.bento_layout_preset);
+
+const heroArticle = articles[0] ?? null;
+const moreArticles = articles.slice(1, 4);
+
+function fmtDate(s: string): string {
+  if (!s) return '';
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toISOString().slice(0, 10);
+}
+
+const tagColorMap = ['mint', 'coral', 'lilac', 'cream'] as const;
+function tagAccent(i: number) {
+  const c = tagColorMap[i % tagColorMap.length];
+  switch (c) {
+    case 'mint':  return 'background: rgba(168,230,207,0.55); color: #065F46; box-shadow: inset 0 0 0 1px rgba(110,211,168,0.8);';
+    case 'coral': return 'background: rgba(255,138,128,0.35); color: #881337; box-shadow: inset 0 0 0 1px rgba(255,138,128,0.9);';
+    case 'lilac': return 'background: rgba(197,163,255,0.40); color: #4C1D95; box-shadow: inset 0 0 0 1px rgba(197,163,255,0.9);';
+    case 'cream': return 'background: rgba(255,224,130,0.55); color: #78350F; box-shadow: inset 0 0 0 1px rgba(245,158,11,0.6);';
+  }
+}
 ---
 
-<Layout title="我的控制台 | Hi-Fi Dark">
-    
-  <article class="hifi-card">
-    <h1>系统初始化完成</h1>
-    <div class="flex items-center gap-4 text-sm text-[#6b7280] mb-8 mt-2">
-      <span>日期: 当前时间</span>
-      <span>•</span>
-      <span class="text-[#f5a623] px-2 py-1 rounded-md shadow-[3px_3px_6px_#161719,-3px_-3px_6px_#2a2b2f]">Astro Engine</span>
-    </div>
-    </article>
+<Layout title={`${settings.nickname} · 数字花园`} showSidebar={false}>
 
+  <div class="bento" data-preset={preset.id}>
+    {preset.tiles.map((spec, idx) => {
+      const style = `grid-column: span ${spec.span}; ${spec.rowSpan && spec.rowSpan > 1 ? `grid-row: span ${spec.rowSpan};` : ''}`;
+      switch (spec.id) {
+
+        case 'hero': return (
+          <div class="tile tile-glow hero-tile" style={`${style} background: linear-gradient(135deg, #FFFFFF 0%, #FFF9F0 100%); padding: 48px 40px;`} data-tile-idx={idx}>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+              <span class="pulse-dot"></span>
+              <span class="mono" style="font-size: 12px; color: #8A8A94; letter-spacing: 0.06em;">LIVING DIGITAL GARDEN</span>
+            </div>
+            <h1 class="hero-title" data-split style="font-size: clamp(36px, 6vw, 64px); line-height: 1.05; margin: 0 0 20px; font-weight: 800; letter-spacing: -0.02em;">{settings.tagline}</h1>
+            <p style="font-size: 17px; color: #52525B; margin: 0 0 28px; max-width: 560px; line-height: 1.6;">{settings.bio}</p>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <a href="/articles" class="btn-primary" data-magnetic data-sparkle>📚 看博客</a>
+              <a href="/diary" class="btn-secondary" data-magnetic>📔 翻日记</a>
+            </div>
+          </div>
+        );
+
+        case 'latest-article': return heroArticle ? (
+          <a href={`/articles/${heroArticle.slug}`} class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #A8E6CF 0%, #7FD4B8 100%); padding: 32px; text-decoration: none; color: #064E3B; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px;`} data-tile-idx={idx}>
+            <div>
+              <span class="chip" style="background: rgba(255,255,255,0.5); color: #064E3B;">{heroArticle.emoji} {heroArticle.tag}</span>
+              <h2 style="font-size: 28px; font-weight: 800; line-height: 1.2; margin: 18px 0 12px; letter-spacing: -0.02em;">{heroArticle.title}</h2>
+              <p style="font-size: 15px; line-height: 1.55; opacity: 0.85; margin: 0;">{heroArticle.excerpt}</p>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; font-size: 13px; opacity: 0.7;">
+              <span class="mono">{fmtDate(heroArticle.created)}</span>
+              <span>阅读 →</span>
+            </div>
+          </a>
+        ) : (
+          <div class="tile" style={`${style} display: flex; align-items: center; justify-content: center; min-height: 220px; color: #8A8A94;`} data-tile-idx={idx}>
+            <div style="text-align: center;">
+              <div style="font-size: 36px; margin-bottom: 8px;">📭</div>
+              <div>还没发表过文章 · 去 <a href="/console" style="color: #6B5BFF;">控制台</a> 写一篇</div>
+            </div>
+          </div>
+        );
+
+        case 'profile': return (
+          <div class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #FFFFFF 0%, #FFF0F0 100%); padding: 24px;`} data-tile-idx={idx}>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+              <div style={`width: 48px; height: 48px; border-radius: 999px; background-image: ${settings.avatar_main ? `url('${settings.avatar_main}')` : 'linear-gradient(135deg, #C5A3FF, #FF8A80)'}; background-size: cover; background-position: center;`}></div>
+              <div>
+                <div style="font-weight: 700; font-size: 16px;">{settings.nickname}</div>
+                <div style="font-size: 12px; color: #8A8A94;">{settings.tagline}</div>
+              </div>
+            </div>
+            <p style="font-size: 13px; color: #52525B; line-height: 1.6; margin: 0 0 14px;">{settings.bio}</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px;">
+              {settings.social_github && <a href={settings.social_github} class="chip" style="background: rgba(0,0,0,0.06); color: #1A1A1F; text-decoration: none;">GitHub</a>}
+              {settings.social_email && <a href={`mailto:${settings.social_email}`} class="chip" style="background: rgba(0,0,0,0.06); color: #1A1A1F; text-decoration: none;">Email</a>}
+            </div>
+          </div>
+        );
+
+        case 'music': return (
+          <div class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #FFE082 0%, #FFCA28 100%); padding: 24px; color: #5A3500;`} data-tile-idx={idx}>
+            <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; margin-bottom: 12px; opacity: 0.7;">NOW PLAYING</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; border-radius: 999px; background: #5A3500; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" class="spin-disk">
+                <span style="display: block; width: 8px; height: 8px; background: #FFE082; border-radius: 999px;"></span>
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <div style="font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{settings.music_title || '尚未配置'}</div>
+                <div style="font-size: 12px; opacity: 0.7;">{settings.music_artist || '在控制台 · 站点设置 中配置'}</div>
+              </div>
+            </div>
+          </div>
+        );
+
+        case 'diaries': return (
+          <div class="tile tile-glow" style={`${style} background: #FFFFFF; padding: 24px;`} data-tile-idx={idx}>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+              <div style="font-weight: 700; font-size: 16px;">📔 近期日记</div>
+              <a href="/diary" style="font-size: 12px; color: #8A8A94; text-decoration: none;">全部 →</a>
+            </div>
+            {diaries.length === 0 ? (
+              <div style="color: #8A8A94; font-size: 13px; padding: 16px 0;">还没有公开日记</div>
+            ) : (
+              <div class="timeline">
+                {diaries.map(d => (
+                  <a href={`/diary/${d.slug}`} class="timeline-item" style="display: block; padding: 8px 0; text-decoration: none; color: inherit;">
+                    <div style="font-weight: 600; font-size: 14px;">{d.title}</div>
+                    <div style="font-size: 11px; color: #8A8A94; margin-top: 2px;">
+                      <span class="mono">{fmtDate(d.date)}</span> · {d.mood} · {d.weather}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+        case 'tags': return (
+          <div class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #C5A3FF 0%, #A85FFF 100%); padding: 24px; color: #FFFFFF;`} data-tile-idx={idx}>
+            <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; opacity: 0.8; margin-bottom: 12px;">TAGS</div>
+            {tags.length === 0 ? (
+              <div style="opacity: 0.8; font-size: 13px;">暂无标签</div>
+            ) : (
+              <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                {tags.map((t, i) => (
+                  <a href={`/articles?tag=${encodeURIComponent(t.name)}`} class="chip tag-pill" style={`${tagAccent(i)} text-decoration: none;`}>
+                    {t.name} <span style="opacity: 0.7;">{t.count}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+        case 'notes': return (
+          <div class="tile tile-glow" style={`${style} background: #FFFFFF; padding: 24px;`} data-tile-idx={idx}>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+              <div style="font-weight: 700; font-size: 16px;">💡 最新笔记</div>
+              <a href="/notes" style="font-size: 12px; color: #8A8A94; text-decoration: none;">全部 →</a>
+            </div>
+            {notes.length === 0 ? (
+              <div style="color: #8A8A94; font-size: 13px; padding: 16px 0; line-height: 1.5;">
+                还没有笔记<br/>
+                <span style="font-size: 11px;">（type 字段添加并发布后会显示）</span>
+              </div>
+            ) : (
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                {notes.map(n => (
+                  <a href={`/notes/${n.slug}`} style="text-decoration: none; color: inherit; padding: 10px; border-radius: 10px; background: rgba(168,230,207,0.18); display: block;">
+                    <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">{n.emoji} {n.title}</div>
+                    <div style="font-size: 12px; color: #52525B; line-height: 1.5;">{n.excerpt}</div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+        case 'more-articles': return (
+          <div style={style} data-tile-idx={idx}>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+              {moreArticles.length === 0 ? (
+                <div class="tile" style="padding: 24px; color: #8A8A94; text-align: center;">
+                  <div style="font-size: 24px; margin-bottom: 6px;">📝</div>
+                  <div style="font-size: 13px;">写够 4 篇文章后这里会自动出现</div>
+                </div>
+              ) : moreArticles.map(p => (
+                <a href={`/articles/${p.slug}`} class="tile tile-glow" style="padding: 18px; text-decoration: none; color: inherit; min-height: 140px; display: flex; flex-direction: column; justify-content: space-between;">
+                  <div>
+                    <span class="chip" style={tagAccent(0)}>{p.emoji} {p.tag}</span>
+                    <h3 style="font-size: 15px; font-weight: 700; line-height: 1.3; margin: 10px 0 6px;">{p.title}</h3>
+                    <p style="font-size: 12px; color: #52525B; line-height: 1.55; margin: 0;">{p.excerpt}</p>
+                  </div>
+                  <div class="mono" style="font-size: 11px; color: #8A8A94; margin-top: 10px;">{fmtDate(p.created)}</div>
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+
+        case 'tools': return (
+          <div class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #FFFFFF 0%, #F0F4FF 100%); padding: 24px;`} data-tile-idx={idx}>
+            <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; color: #8A8A94; margin-bottom: 12px;">TOOLS · 工具</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <a href="/correct" style="padding: 12px; border-radius: 10px; background: rgba(107,91,255,0.08); text-decoration: none; color: #1A1A1F;">
+                <div style="font-weight: 600; font-size: 13px;">🎵 歌词修正</div>
+                <div style="font-size: 11px; color: #8A8A94; margin-top: 2px;">校对工具</div>
+              </a>
+              <a href="/console" style="padding: 12px; border-radius: 10px; background: rgba(168,230,207,0.18); text-decoration: none; color: #1A1A1F;">
+                <div style="font-weight: 600; font-size: 13px;">⚙ 控制台</div>
+                <div style="font-size: 11px; color: #8A8A94; margin-top: 2px;">管理后台</div>
+              </a>
+            </div>
+          </div>
+        );
+
+        case 'footer': return (
+          <div style={`${style} padding: 20px 0; border-top: 1px solid rgba(0,0,0,0.06); margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; color: #8A8A94; font-size: 12px;`} data-tile-idx={idx}>
+            <span>© {new Date().getFullYear()} {settings.nickname} · 数字花园</span>
+            <span class="mono">layout: {preset.id} · theme: {settings.active_theme}</span>
+          </div>
+        );
+
+        default: return null;
+      }
+    })}
+  </div>
+
+  <style is:global>
+    :root {
+      --tile-shadow: 0 8px 24px rgba(26, 26, 31, 0.06), 0 2px 6px rgba(26, 26, 31, 0.04);
+      --tile-shadow-hover: 0 16px 40px rgba(26, 26, 31, 0.12), 0 4px 12px rgba(26, 26, 31, 0.08);
+    }
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .bento > * { grid-column: span 2 !important; grid-row: auto !important; }
+    }
+    .tile {
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: var(--tile-shadow);
+      position: relative;
+      overflow: hidden;
+      transform-style: preserve-3d;
+      transition: transform 320ms cubic-bezier(.2,.8,.2,1), box-shadow 320ms;
+      opacity: 0;
+      transform: perspective(900px) rotateX(0deg) rotateY(0deg) translateY(20px) scale(0.97);
+    }
+    .tile.in {
+      opacity: 1;
+      transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--ty, 0px)) scale(1);
+    }
+    .tile:hover { --ty: -4px; box-shadow: var(--tile-shadow-hover); }
+    .tile-glow::after {
+      content: '';
+      position: absolute; inset: -1px;
+      border-radius: inherit;
+      background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), rgba(197,163,255,0.18), transparent 40%);
+      opacity: 0;
+      transition: opacity 280ms;
+      pointer-events: none;
+    }
+    .tile-glow:hover::after { opacity: 1; }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+    .hero-title {
+      background: linear-gradient(120deg, #1A1A1F 0%, #6B5BFF 40%, #FF8A80 70%, #1A1A1F 100%);
+      background-size: 200% auto;
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: sheen 8s ease-in-out infinite;
+    }
+    @keyframes sheen {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .hero-title .ch {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(30px) rotate(-5deg);
+      animation: letterIn 780ms cubic-bezier(.2,.7,.2,1) forwards;
+    }
+    @keyframes letterIn { to { opacity: 1; transform: translateY(0) rotate(0); } }
+
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: #6ED3A8; display: inline-block;
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(110,211,168,0.55); transform: scale(1); }
+      50%      { box-shadow: 0 0 0 10px rgba(110,211,168,0); transform: scale(1.15); }
+    }
+
+    .timeline { position: relative; padding-left: 22px; }
+    .timeline::before {
+      content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px;
+      width: 2px; background: linear-gradient(180deg, #C5A3FF, #FFE082); border-radius: 2px;
+    }
+    .timeline-item { position: relative; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: -22px; top: 14px;
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #FFFFFF; border: 2px solid #C5A3FF;
+    }
+
+    .btn-primary, .btn-secondary {
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px; font-weight: 600;
+      text-decoration: none;
+      transition: transform 220ms cubic-bezier(.2,.7,.2,1);
+      will-change: transform;
+    }
+    .btn-primary { background: #1A1A1F; color: #FFFFFF; }
+    .btn-secondary { background: rgba(0,0,0,0.06); color: #1A1A1F; }
+
+    .tag-pill { transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms; }
+    .tag-pill:hover { transform: translateY(-3px) rotate(-2deg); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+
+    [data-magnetic] { transition: transform 280ms cubic-bezier(.2,.7,.2,1); will-change: transform; }
+    [data-countup] { font-variant-numeric: tabular-nums; }
+
+    .sparkle { position: fixed; pointer-events: none; z-index: 9998; font-size: 18px; line-height: 1; will-change: transform, opacity; }
+
+    @keyframes spin-disk { to { transform: rotate(360deg); } }
+    .spin-disk { animation: spin-disk 6s linear infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tile, .hero-title .ch, [data-magnetic], .spin-disk {
+        animation: none !important; transition: none !important;
+        opacity: 1 !important; transform: none !important;
+      }
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Hero 标题逐字
+      document.querySelectorAll<HTMLElement>('[data-split]').forEach(el => {
+        const text = el.textContent ?? '';
+        el.textContent = '';
+        [...text].forEach((c, i) => {
+          const span = document.createElement('span');
+          span.className = 'ch';
+          span.textContent = c === ' ' ? '\u00A0' : c;
+          span.style.animationDelay = `${i * 35}ms`;
+          el.appendChild(span);
+        });
+      });
+
+      // IntersectionObserver 入场
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            setTimeout(() => el.classList.add('in'), i * 70);
+            io.unobserve(el);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      document.querySelectorAll('.tile').forEach(t => io.observe(t));
+
+      // 3D Tilt + 光晕
+      if (!reduce) {
+        document.querySelectorAll<HTMLElement>('.tile-glow').forEach(el => {
+          el.addEventListener('mousemove', (e) => {
+            const r = el.getBoundingClientRect();
+            const x = e.clientX - r.left;
+            const y = e.clientY - r.top;
+            el.style.setProperty('--mx', `${x}px`);
+            el.style.setProperty('--my', `${y}px`);
+            el.style.setProperty('--rx', `${-((y - r.height/2)/(r.height/2)) * 5}deg`);
+            el.style.setProperty('--ry', `${((x - r.width/2)/(r.width/2)) * 6}deg`);
+          });
+          el.addEventListener('mouseleave', () => {
+            el.style.setProperty('--rx', '0deg');
+            el.style.setProperty('--ry', '0deg');
+          });
+        });
+      }
+
+      // 磁吸
+      if (!reduce) {
+        document.querySelectorAll<HTMLElement>('[data-magnetic]').forEach(btn => {
+          btn.addEventListener('mousemove', (e) => {
+            const r = btn.getBoundingClientRect();
+            const dx = (e.clientX - (r.left + r.width/2)) * 0.25;
+            const dy = (e.clientY - (r.top + r.height/2)) * 0.25;
+            btn.style.transform = `translate(${dx}px, ${dy}px)`;
+          });
+          btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+        });
+      }
+
+      // Sparkle
+      const emojis = ['✨','⭐','💫','🌟','✦'];
+      document.querySelectorAll<HTMLElement>('[data-sparkle]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          if (reduce) return;
+          for (let i = 0; i < 12; i++) {
+            const s = document.createElement('span');
+            s.className = 'sparkle';
+            s.textContent = emojis[i % emojis.length];
+            s.style.left = `${e.clientX}px`;
+            s.style.top = `${e.clientY}px`;
+            s.style.transition = 'transform 800ms cubic-bezier(.2,.7,.2,1), opacity 800ms';
+            s.style.transform = 'translate(-50%, -50%) scale(0.6)';
+            s.style.opacity = '1';
+            document.body.appendChild(s);
+            const angle = (Math.PI * 2 * i) / 12 + Math.random() * 0.4;
+            const dist = 80 + Math.random() * 60;
+            requestAnimationFrame(() => {
+              s.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(1.3) rotate(${Math.random()*360}deg)`;
+              s.style.opacity = '0';
+            });
+            setTimeout(() => s.remove(), 850);
+          }
+        });
+      });
+    });
+  </script>
 </Layout>

@@ -1,0 +1,259 @@
+---
+// 风格原型 · Magazine Editorial · 黑白杂志大字号
+// 纯白底 + 黑色 serif 大标题 + 邮戳红点缀 + 不对称排版
+import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
+const posts = [
+  { slug: 'xmod', title: 'XanMod 内核 + BBRv3 调优脚本', excerpt: '一键编译 XanMod 并启用 BBRv3 拥塞控制，适配 Debian 与 Ubuntu。文章给出完整脚本、回滚方案与基准测试。', tag: 'Linux', date: '2026.03.18', reads: 842 },
+  { slug: 'vaultwarden', title: '自建 Vaultwarden 密码管理器', excerpt: '用 Docker 与 Cloudflare Tunnel 搭建只属于自己的密码保险柜。', tag: '自建', date: '2026.03.04', reads: 1203 },
+  { slug: 'create-blog', title: 'Webhook 自动部署博客', excerpt: 'Git push 触发 Webhook，服务器自动拉取并构建。', tag: 'DevOps', date: '2026.02.22', reads: 567 },
+  { slug: 'astro-ssr', title: 'Astro SSR 首屏性能优化笔记', excerpt: '从 3.2s 到 0.8s，做对了 5 件事。', tag: 'Frontend', date: '2026.02.10', reads: 1456 },
+  { slug: 'pocketbase-notes', title: 'PocketBase 作为 BaaS 的边界', excerpt: '能做什么、不能做什么，以及我踩的 3 个坑。', tag: 'Backend', date: '2026.01.28', reads: 998 },
+];
+const diaries = [
+  { slug: '2026-04-20', title: '第一次试用 Motion One', excerpt: '只有 2kb 但够用了。', date: '2026.04.20' },
+  { slug: '2026-04-15', title: '深夜的咖啡和 Astro 文档', excerpt: 'Content Collections 真香。', date: '2026.04.15' },
+  { slug: '2026-04-08', title: '推翻了黑胶风格', excerpt: '从深色到明亮，只花了一个周末。', date: '2026.04.08' },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>THE GARDEN · Issue N° 04</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style is:global>
+      :root {
+        --paper: #FFFFFF;
+        --ink: #0A0A0A;
+        --ink-soft: #2B2B2E;
+        --ink-mute: #6B6B72;
+        --red: #C8102E;
+        --line: #0A0A0A;
+        --line-soft: rgba(10,10,10,0.12);
+      }
+      * { box-sizing: border-box; }
+      html,body { margin:0; padding:0; }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: 'Source Serif 4', 'Playfair Display', Georgia, serif;
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      h1,h2,h3 { font-family: 'Playfair Display', 'Source Serif 4', serif; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+      .sans { font-family: 'Inter', -apple-system, sans-serif; }
+
+      a { color: inherit; text-decoration: none; }
+      a.link { border-bottom: 1px solid currentColor; padding-bottom: 1px; transition: color 200ms, border-color 200ms; }
+      a.link:hover { color: var(--red); border-color: var(--red); }
+
+      /* 细节元素 */
+      .rule { height: 1px; background: var(--line); width: 100%; margin: 24px 0; }
+      .rule-thick { height: 4px; background: var(--line); width: 100%; }
+      .rule-dbl { height: 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 20px 0; }
+
+      .smallcaps { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; font-weight: 600; font-family: 'Inter', sans-serif; }
+
+      .red { color: var(--red); }
+      .rotate-stamp { display: inline-block; transform: rotate(-4deg); padding: 4px 10px; border: 2px solid var(--red); color: var(--red); font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; }
+
+      /* 容器 */
+      .container { max-width: 1160px; margin: 0 auto; padding: 24px 32px 80px; }
+
+      /* 刊头 */
+      .masthead { padding: 20px 0; border-top: 6px solid var(--line); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+      .mast-title { font-family: 'Playfair Display', serif; font-weight: 900; font-size: clamp(40px, 7vw, 72px); line-height: 0.95; letter-spacing: -0.02em; }
+      .mast-title em { font-style: italic; font-weight: 400; }
+      .mast-meta { text-align: right; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink-mute); }
+
+      /* Feature（头条） */
+      .feature { display: grid; grid-template-columns: 3fr 2fr; gap: 40px; padding: 32px 0 36px; border-bottom: 1px solid var(--line); margin-bottom: 40px; }
+      @media (max-width: 900px) { .feature { grid-template-columns: 1fr; } }
+      .feature-tag { margin-bottom: 14px; }
+      .feature h2 {
+        font-size: clamp(36px, 5vw, 60px);
+        line-height: 1.02;
+        margin-bottom: 16px;
+        font-weight: 900;
+      }
+      .feature-lede { font-size: 20px; line-height: 1.5; color: var(--ink-soft); font-family: 'Source Serif 4', serif; font-style: italic; margin-bottom: 20px; }
+      .feature-body { font-size: 15px; line-height: 1.75; columns: 2; column-gap: 28px; column-rule: 1px solid var(--line-soft); color: var(--ink-soft); }
+      .feature-body::first-letter {
+        font-family: 'Playfair Display', serif; font-weight: 900;
+        font-size: 68px; float: left; line-height: 0.85;
+        padding: 6px 10px 0 0; color: var(--red);
+      }
+      .feature-art { background: var(--ink); color: var(--paper); padding: 40px 32px; min-height: 380px; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
+      .feature-art .big-num { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 200px; line-height: 0.85; color: var(--red); }
+      .feature-art .cap { font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.7; }
+
+      /* 文章条目（3 列） */
+      .articles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; padding-bottom: 40px; border-bottom: 1px solid var(--line); }
+      @media (max-width: 900px) { .articles { grid-template-columns: 1fr; } }
+      .art-card {
+        padding-right: 20px;
+        border-right: 1px solid var(--line-soft);
+        opacity: 0; transform: translateY(10px);
+        animation: rise 800ms cubic-bezier(.2,.7,.2,1) forwards;
+      }
+      .art-card:nth-child(1) { animation-delay: 100ms; }
+      .art-card:nth-child(2) { animation-delay: 200ms; }
+      .art-card:nth-child(3) { animation-delay: 300ms; }
+      .art-card:nth-child(4) { animation-delay: 400ms; }
+      .art-card:last-child { border-right: none; padding-right: 0; }
+      @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+      .art-num { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 40px; color: var(--red); line-height: 1; margin-bottom: 8px; }
+      .art-card h3 { font-size: 22px; line-height: 1.2; margin-bottom: 10px; }
+      .art-card h3 a { transition: color 180ms; }
+      .art-card h3 a:hover { color: var(--red); }
+      .art-card .excerpt { font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+
+      /* 日记 / 栏目 */
+      .side-section { padding: 40px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr 2fr; gap: 40px; }
+      @media (max-width: 900px) { .side-section { grid-template-columns: 1fr; } }
+      .section-label {
+        font-family: 'Playfair Display', serif;
+        font-style: italic;
+        font-size: 32px;
+        line-height: 1;
+        color: var(--ink);
+      }
+      .section-label small { display: block; font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); font-weight: 600; font-style: normal; margin-bottom: 8px; }
+
+      .diary-item { padding: 14px 0; border-bottom: 1px solid var(--line-soft); display: flex; gap: 20px; align-items: baseline; }
+      .diary-date { font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); min-width: 90px; }
+      .diary-title { font-size: 19px; line-height: 1.3; font-weight: 700; flex: 1; }
+      .diary-ex { font-size: 13px; color: var(--ink-mute); margin-top: 2px; font-style: italic; }
+
+      /* 刊尾 */
+      .colophon {
+        margin-top: 40px;
+        padding: 24px 0;
+        border-top: 6px solid var(--line);
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+        font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute);
+      }
+
+      .tip { margin-top: 28px; padding: 14px 18px; background: #FFF8E5; border: 1px solid var(--red); color: var(--ink); font-family: 'Inter', sans-serif; font-size: 13px; }
+
+      /* 光标（hover 上标题时） */
+      .hover-line { position: relative; display: inline-block; }
+      .hover-line::after {
+        content:''; position: absolute; left:0; bottom:-2px; width: 100%; height: 1px;
+        background: var(--red); transform: scaleX(0); transform-origin: left;
+        transition: transform 420ms cubic-bezier(.2,.7,.2,1);
+      }
+      .hover-line:hover::after { transform: scaleX(1); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+
+      <!-- 刊头 -->
+      <header class="masthead">
+        <div>
+          <div class="smallcaps red" style="margin-bottom: 6px;">Issue N° 04 · Since 2023</div>
+          <div class="mast-title">The <em>Garden</em></div>
+        </div>
+        <div class="mast-meta">
+          <div class="smallcaps">April · Twenty Twenty Six</div>
+          <div style="margin-top: 6px;">定价 · ¥0 · 周刊</div>
+          <div style="margin-top: 4px;">@twj0 · hello@example.com</div>
+        </div>
+      </header>
+
+      <!-- 副刊头 -->
+      <div class="rule-dbl"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink-soft);">
+        <div class="smallcaps">Linux · DevOps · Frontend · Backend · 自建 · 工具</div>
+        <div class="rotate-stamp">本期重磅</div>
+      </div>
+
+      <!-- Feature -->
+      <section class="feature">
+        <div>
+          <div class="feature-tag smallcaps red">封面文章 · {posts[0].tag}</div>
+          <h2 class="hover-line"><a href={`/posts/${posts[0].slug}`}>{posts[0].title}</a></h2>
+          <div class="feature-lede">{posts[0].excerpt}</div>
+          <div class="feature-body">
+            <p>内核调优从来不是一键的事情。本文从编译依赖一路讲到回滚，中间穿插一份能直接贴到生产的脚本。讨论涉及 CONFIG_SCHED_DEBUG、CPU governor、以及 BBRv3 相对 v2 在丢包率 3% 下的吞吐提升。</p>
+            <p>读者反馈：有人把它跑进了 Proxmox 的虚拟机，有人直接上到了裸金属。我们把踩到的坑都收在了文末。</p>
+          </div>
+          <div style="margin-top: 20px; display: flex; gap: 16px; align-items: center;">
+            <a href="#" class="smallcaps link">继续阅读 →</a>
+            <span class="smallcaps" style="color: var(--ink-mute);">{posts[0].date} · {posts[0].reads} reads</span>
+          </div>
+        </div>
+        <div class="feature-art">
+          <div>
+            <div class="cap">— FIG. 01 —</div>
+            <div class="cap" style="margin-top: 6px;">BBRv3 · Congestion Control</div>
+          </div>
+          <div class="big-num">01</div>
+          <div class="cap">"内核调优从来不是一键的事情。"</div>
+        </div>
+      </section>
+
+      <!-- 3 列次要文章 -->
+      <section>
+        <div class="smallcaps" style="color: var(--ink-mute); margin-bottom: 14px; display: flex; justify-content: space-between;">
+          <span>— 本期文章 —</span>
+          <span>{posts.length - 1} 篇</span>
+        </div>
+        <div class="articles">
+          {posts.slice(1, 4).map((p, i) => (
+            <article class="art-card">
+              <div class="art-num">{String(i + 2).padStart(2, '0')}</div>
+              <div class="smallcaps red" style="margin-bottom: 8px;">{p.tag}</div>
+              <h3><a href={`/posts/${p.slug}`} class="hover-line">{p.title}</a></h3>
+              <div class="excerpt">{p.excerpt}</div>
+              <div class="rule" style="margin: 14px 0 10px;"></div>
+              <div class="smallcaps" style="color: var(--ink-mute);">{p.date} · {p.reads} reads</div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <!-- 日记 -->
+      <section class="side-section">
+        <div>
+          <div class="section-label">
+            <small class="red">— 专栏 —</small>
+            Diary<br/><em>of the month</em>
+          </div>
+          <div class="rule" style="margin-top: 14px;"></div>
+          <p style="font-size: 13px; color: var(--ink-mute); font-family: 'Inter', sans-serif; line-height: 1.7;">一份只对自己公开的笔记。偶尔放出几条给路过的人读。</p>
+          <div class="rotate-stamp" style="margin-top: 12px;">默认私密</div>
+        </div>
+        <div>
+          {diaries.map(d => (
+            <div class="diary-item">
+              <div class="diary-date">{d.date}</div>
+              <div style="flex: 1;">
+                <a href={`/diary/${d.slug}`} class="diary-title hover-line">{d.title}</a>
+                <div class="diary-ex">{d.excerpt}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- 刊尾 -->
+      <footer class="colophon">
+        <div>THE GARDEN · PUBLISHED WEEKLY · @twj0</div>
+        <div>BUILT WITH ASTRO + POCKETBASE</div>
+        <div>N° 04 · APR 2026</div>
+      </footer>
+
+      <div class="tip">
+        <strong>📰 Magazine Editorial 原型</strong> — 黑白杂志风。阅读感最强、最适合长文技术博客；代价是对首页做不出"丰富感"，没有彩色 Bento 那种活泼。可作为"博客正文 Layout"候选，首页仍用 Bento。
+      </div>
+    </div>
+    <ThemeSwitcher active="magazine" />
+  </body>
+</html>
