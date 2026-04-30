@@ -17,6 +17,8 @@ import NotesTab from '../components/console/NotesTab.astro';
 import PostsTab from '../components/console/PostsTab.astro';
 import SettingsTab from '../components/console/SettingsTab.astro';
 import ThemeTab from '../components/console/ThemeTab.astro';
+
+const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || import.meta.env.PB_URL || 'https://example-pocketbase.invalid';
 ---
 
 <Layout title="控制台 | 管理面板" showSidebar={false} showToc={false}>
@@ -522,6 +524,10 @@ import ThemeTab from '../components/console/ThemeTab.astro';
     }
   </style>
 </Layout>
+
+<script define:vars={{ clientPbUrl }} is:inline>
+  window.__PB_URL__ = clientPbUrl;
+</script>
 
 <script>
   import { $, errorMessage, pb, runConsoleLoaders, val } from '../lib/console-client';

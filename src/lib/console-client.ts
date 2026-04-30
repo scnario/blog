@@ -1,6 +1,12 @@
 import PocketBase from 'pocketbase';
 
-const PB_URL = import.meta.env.PB_URL || 'https://example-pocketbase.invalid';
+declare global {
+  interface Window {
+    __PB_URL__?: string;
+  }
+}
+
+const PB_URL = window.__PB_URL__ || import.meta.env.PUBLIC_PB_URL || 'https://example-pocketbase.invalid';
 
 export const pb = new PocketBase(PB_URL);
 
