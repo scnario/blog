@@ -1,7 +1,6 @@
 ---
 // 风格原型 · Magazine Editorial · 黑白杂志大字号
 // 纯白底 + 黑色 serif 大标题 + 邮戳红点缀 + 不对称排版
-import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
 const posts = [
   { slug: 'xmod', title: 'XanMod 内核 + BBRv3 调优脚本', excerpt: '一键编译 XanMod 并启用 BBRv3 拥塞控制，适配 Debian 与 Ubuntu。文章给出完整脚本、回滚方案与基准测试。', tag: 'Linux', date: '2026.03.18', reads: 842 },
   { slug: 'vaultwarden', title: '自建 Vaultwarden 密码管理器', excerpt: '用 Docker 与 Cloudflare Tunnel 搭建只属于自己的密码保险柜。', tag: '自建', date: '2026.03.04', reads: 1203 },
@@ -163,7 +162,7 @@ const diaries = [
         <div class="mast-meta">
           <div class="smallcaps">April · Twenty Twenty Six</div>
           <div style="margin-top: 6px;">定价 · ¥0 · 周刊</div>
-          <div style="margin-top: 4px;">@twj0 · hello@example.com</div>
+          <div style="margin-top: 4px;">@scnario · hello@example.com</div>
         </div>
       </header>
 
@@ -245,7 +244,7 @@ const diaries = [
 
       <!-- 刊尾 -->
       <footer class="colophon">
-        <div>THE GARDEN · PUBLISHED WEEKLY · @twj0</div>
+        <div>THE GARDEN · PUBLISHED WEEKLY · @scnario</div>
         <div>BUILT WITH ASTRO + POCKETBASE</div>
         <div>N° 04 · APR 2026</div>
       </footer>
@@ -254,6 +253,5 @@ const diaries = [
         <strong>📰 Magazine Editorial 原型</strong> — 黑白杂志风。阅读感最强、最适合长文技术博客；代价是对首页做不出"丰富感"，没有彩色 Bento 那种活泼。可作为"博客正文 Layout"候选，首页仍用 Bento。
       </div>
     </div>
-    <ThemeSwitcher active="magazine" />
   </body>
 </html>

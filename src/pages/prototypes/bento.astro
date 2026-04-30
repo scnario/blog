@@ -3,7 +3,6 @@
 // 独立于 Layout.astro，使用 mock 数据，不连 PocketBase
 // 目的：确认"明亮 Bento + 多彩卡片 + 明显动画"风格的视觉效果
 // 已加入更丰富的动画：3D tilt / count-up / magnetic / sparkle / scroll reveal
-import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
 
 const posts = [
   { slug: 'xmod', title: 'XanMod 内核 + BBRv3 调优脚本', excerpt: '一键编译 XanMod 并启用 BBRv3，适配 Debian / Ubuntu。', tag: 'Linux', emoji: '🐧', date: '2026-03-18', reads: 842 },
@@ -310,8 +309,8 @@ const accentStyle: Record<string, string> = {
           <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;">
             <div style="width: 64px; height: 64px; border-radius: 999px; background: linear-gradient(135deg, var(--coral), var(--lilac)); display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 16px rgba(255,138,128,0.3);">🧑‍💻</div>
             <div>
-              <div style="font-weight: 700; font-size: 16px;">twj0</div>
-              <div class="mono" style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">@twj0 · 码农日志</div>
+              <div style="font-weight: 700; font-size: 16px;">scnario</div>
+              <div class="mono" style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">@scnario · 码农日志</div>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 4px;">
               <a href="#" class="reset" style="width: 30px; height: 30px; border-radius: 8px; background: var(--line); display: flex; align-items: center; justify-content: center; font-size: 14px;">🐙</a>
@@ -581,7 +580,5 @@ const accentStyle: Record<string, string> = {
         });
       });
     </script>
-
-    <ThemeSwitcher active="bento" />
   </body>
 </html>

@@ -1,7 +1,6 @@
 ---
 // 风格原型 · Terminal · 全屏伪终端极客风
 // 黑 + 终端绿 + 琥珀 · Monospace · 打字机 + 扫描线 + glitch
-import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
 const posts = [
   { slug: 'xmod', title: 'xmod.sh', tag: 'linux', size: '4.2K', date: '03-18', reads: 842 },
   { slug: 'vaultwarden', title: 'vaultwarden.md', tag: 'self-host', size: '8.1K', date: '03-04', reads: 1203 },
@@ -157,7 +156,7 @@ const diaries = [
         <span class="tb-dot tb-close"></span>
         <span class="tb-dot tb-min"></span>
         <span class="tb-dot tb-max"></span>
-        <span class="tb-title">twj0@garden: ~/blog — zsh — 120×32</span>
+        <span class="tb-title">scnario@garden: ~/blog — zsh — 120×32</span>
       </div>
       <div class="panel">
         <!-- ASCII Banner -->
@@ -168,12 +167,12 @@ const diaries = [
  / /_/ / / /_/ / / /_/ /_/ / /  / /_/ / /_/ / /  / /_/ /  __/ / / /
 /_____/_/\__, /_/\__/\__,_/_/   \____/\__,_/_/   \__,_/\___/_/ /_/
         /____/                                                     </pre>
-        <div class="comment">// day by day, life by life. · twj0 &lt;hello@example.com&gt; · since 2023</div>
+        <div class="comment">// day by day, life by life. · scnario &lt;hello@example.com&gt; · since 2023</div>
         <div style="margin-top: 10px;">
-          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt">whoami && uname -r && uptime</span>
+          <span class="user">scnario@garden</span>:<span class="path">~/blog</span><span class="prompt">whoami && uname -r && uptime</span>
         </div>
         <div style="padding-left: 18px; margin-top: 4px; font-size: 12px;">
-          <div>twj0</div>
+          <div>scnario</div>
           <div>6.12.4-xanmod1 #1 SMP PREEMPT_DYNAMIC</div>
           <div>up <span style="color: var(--green);">312 days</span>, load avg: 0.04 0.09 0.12</div>
         </div>
@@ -188,14 +187,14 @@ const diaries = [
       </div>
       <div class="panel">
         <div>
-          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt">ls -la posts/ <span class="flag">--sort=time</span></span>
+          <span class="user">scnario@garden</span>:<span class="path">~/blog</span><span class="prompt">ls -la posts/ <span class="flag">--sort=time</span></span>
         </div>
         <div class="comment" style="margin: 6px 0 12px;">total {posts.length} · published</div>
         <table class="ls">
           {posts.map(p => (
             <tr>
               <td class="perm">-rw-r--r--</td>
-              <td class="perm">twj0</td>
+              <td class="perm">scnario</td>
               <td class="size">{p.size}</td>
               <td class="date">{p.date}</td>
               <td>
@@ -207,7 +206,7 @@ const diaries = [
           ))}
         </table>
         <div style="margin-top: 14px;">
-          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt"><span class="caret"></span></span>
+          <span class="user">scnario@garden</span>:<span class="path">~/blog</span><span class="prompt"><span class="caret"></span></span>
         </div>
       </div>
 
@@ -220,7 +219,7 @@ const diaries = [
       </div>
       <div class="panel">
         <div>
-          <span class="user">twj0@garden</span>:<span class="path">~/blog</span><span class="prompt">cat diary/*.diary | head -20</span>
+          <span class="user">scnario@garden</span>:<span class="path">~/blog</span><span class="prompt">cat diary/*.diary | head -20</span>
         </div>
         <div class="comment" style="margin: 6px 0 14px;">// {diaries.length} entries · chmod 600 by default</div>
         {diaries.map(d => (
@@ -264,6 +263,5 @@ const diaries = [
         <strong>&gt;_ Terminal 原型</strong> — 极客浓度拉满。适合人设强化，但对长文阅读不友好；博客正文可考虑进入后切换更舒适的字体。不推荐用于日记气质的内容。
       </div>
     </div>
-    <ThemeSwitcher active="terminal" />
   </body>
 </html>

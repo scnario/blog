@@ -1,7 +1,6 @@
 ---
 // 风格原型 · Aurora Glass · 深色极光玻璃（现代升级版 Hi-Fi）
 // 深靛底 + 漂浮极光渐变 blob + 高斯玻璃 + 彩虹边 + 漂浮粒子
-import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
 const posts = [
   { slug: 'xmod', title: 'XanMod 内核 + BBRv3 调优', excerpt: '一键编译 XanMod 并启用 BBRv3，适配 Debian / Ubuntu。', tag: 'Linux', date: '2026-03-18', reads: 842 },
   { slug: 'vaultwarden', title: '自建 Vaultwarden 密码管理器', excerpt: 'Docker + Cloudflare Tunnel 搭一个只属于自己的保险柜。', tag: '自建服务', date: '2026-03-04', reads: 1203 },
@@ -267,8 +266,8 @@ const diaries = [
           <div style="width: 60px; height: 60px; border-radius: 999px; margin: 0 auto 12px; background: conic-gradient(from 0deg, var(--aurora-1), var(--aurora-2), var(--aurora-3), var(--aurora-4), var(--aurora-1)); padding: 2px;">
             <div style="width: 100%; height: 100%; border-radius: 999px; background: var(--bg-lift); display: flex; align-items: center; justify-content: center; font-size: 26px;">🧑‍💻</div>
           </div>
-          <div style="font-weight: 600; font-size: 15px;">twj0</div>
-          <div class="label" style="margin-top: 4px;">@twj0 · 码农日志</div>
+          <div style="font-weight: 600; font-size: 15px;">scnario</div>
+          <div class="label" style="margin-top: 4px;">@scnario · 码农日志</div>
           <div style="display: flex; justify-content: center; gap: 6px; margin-top: 12px;">
             <a href="#" class="reset" style="width: 32px; height: 32px; border-radius: 8px; background: var(--glass); border: 1px solid var(--glass-brd); display: flex; align-items: center; justify-content: center; font-size: 14px;">🐙</a>
             <a href="#" class="reset" style="width: 32px; height: 32px; border-radius: 8px; background: var(--glass); border: 1px solid var(--glass-brd); display: flex; align-items: center; justify-content: center; font-size: 14px;">✉️</a>
@@ -355,10 +354,9 @@ const diaries = [
       </div>
 
       <div class="tip">
-        <strong>✨ Aurora Glass 原型</strong> — 深色极光 + 精致玻璃。是当前 Hi-Fi 风格的"现代升级版"：去掉了 hifi-card 的 noise border，改用漂浮 aurora + 彩虹 hover 边。视觉冲击强，日记页可只换 blob 颜色为暖色。
+        <strong>✨ Aurora Glass 原型</strong> — 深色极光 + 精致玻璃。漂浮 aurora 渐变 + 彩虹 hover 边，视觉冲击强；日记页可仅换 blob 颜色为暖色。
       </div>
 
     </div>
-    <ThemeSwitcher active="aurora" />
   </body>
 </html>

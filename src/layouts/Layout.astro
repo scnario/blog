@@ -1,4 +1,5 @@
 ---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables assist/source/organizeImports: Astro frontmatter symbols are consumed by the template/style blocks.
 /**
  * 主 Layout — 全站统一框架
  *
@@ -6,42 +7,53 @@
  * - 顶部 TopNav 替代原本零散的导航
  * - aside 改为条件渲染：showSidebar / showToc 由页面 props 控制
  * - settings 通过 src/lib/queries.ts 取，带 5 分钟缓存与字段缺失回退
- * - ThemeSwitcher 始终浮动在右下角
+ * - 主题切换由控制台「主题」tab 控制（cookie + PB.active_theme 双链路）
+ * - data-theme="<slug>" 注入 <html>，本文件的 [data-theme] CSS 决定视觉
  */
 import '../styles/global.css';
-import HeroHeader from '../components/HeroHeader.astro';
+import '../styles/bento-webui.css';
+import '../styles/sticky-notes.css';
+import { ClientRouter } from 'astro:transitions';
 import ProfileCard from '../components/ProfileCard.astro';
 import TocPanel from '../components/TocPanel.astro';
 import MusicPlayer from '../components/MusicPlayer.astro';
 import TopNav from '../components/TopNav.astro';
-import ThemeSwitcher from '../components/ThemeSwitcher.astro';
 import { getSettings } from '../lib/queries';
 import { resolveTheme, type ThemeSlug } from '../lib/theme';
 
 interface Props {
   title?: string;
-  frontmatter?: any;
-  headings?: any[];
+  description?: string;
+  ogImage?: string;
+  headings?: Heading[];
   /** 默认 true，控制台 / 全屏工具页传 false */
   showSidebar?: boolean;
   /** 仅在文章/笔记详情页传 true（且 headings 非空） */
   showToc?: boolean;
 }
 
+interface Heading {
+  depth: number;
+  slug?: string;
+  text?: string;
+}
+
 const {
   title,
-  frontmatter,
+  description,
+  ogImage,
   headings = [],
   showSidebar = true,
   showToc: showTocProp,
 } = Astro.props as Props;
 
-const pageTitle = title || frontmatter?.title || '数字花园';
-const toc = headings.filter((h: any) => h.depth <= 3);
-const isMarkdown = !!frontmatter;
+const pageTitle = title || 'scnario';
+const pageUrl = Astro.url.href;
+const toc = headings.filter((h) => h.depth <= 3);
 const showToc = showTocProp ?? toc.length > 0;
 
 const settings = await getSettings();
+const pageDesc = description || settings.tagline || 'scnario — 技术笔记 · 工具碎片 · 日常杂感';
 
 // cookie 优先，其次 PB settings.active_theme，最后 default
 const cookieTheme = Astro.cookies.get('site_theme')?.value;
@@ -62,6 +74,15 @@ const bgUrl = settings.bg_image
   : 'none';
 const avatarMain = settings.avatar_main ? `url('${settings.avatar_main}')` : 'none';
 const avatarSub = settings.avatar_sub ? `url('${settings.avatar_sub}')` : 'none';
+const visualPaper = settings.visual_paper;
+const visualInk = settings.visual_ink;
+const visualMint = settings.visual_mint;
+const visualCoral = settings.visual_coral;
+const visualLilac = settings.visual_lilac;
+const visualCream = settings.visual_cream;
+const visualDotSize = `${settings.visual_dot_size}px`;
+const visualShadow = settings.visual_shadow;
+const consoleAccent = settings.console_accent;
 
 const pathname = Astro.url.pathname;
 ---
@@ -72,6 +93,35 @@ const pathname = Astro.url.pathname;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{pageTitle}</title>
+    <meta name="description" content={pageDesc} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDesc} />
+    <meta property="og:url" content={pageUrl} />
+    <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDesc} />
+
+    <!-- OG Image -->
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && <meta property="og:image:width" content="1200" />}
+    {ogImage && <meta property="og:image:height" content="630" />}
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+
+    <!-- 路由切换：默认 fade，无白屏 -->
+    <ClientRouter />
+    <!-- prefers-reduced-motion 下取消 fade 转场 -->
+    <style>
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(*),
+        ::view-transition-new(*) {
+          animation: none !important;
+        }
+      }
+    </style>
 
     <style is:global define:vars={{
       themeColor,
@@ -81,10 +131,22 @@ const pathname = Astro.url.pathname;
       showParticles,
       bgUrl,
       avatarMain,
-      avatarSub
+      avatarSub,
+      visualPaper,
+      visualInk,
+      visualMint,
+      visualCoral,
+      visualLilac,
+      visualCream,
+      visualDotSize,
+      visualShadow,
+      consoleAccent
     }}>
+      /* ===== 全站主题 token =====
+         每个 [data-theme] 重新定义这一组变量，所有内容卡片（笔记 / 文章 / 日记）
+         统一通过 var(--xxx) 取值，不再硬编码颜色。
+         字体也跟主题走，确保深色 / 浅色 / 衬线 / 等宽四类都有合理对比度。 */
       :root {
-        --text-accent: var(--themeColor);
         --glass-opacity: var(--glassOpacity);
         --glass-bg: rgba(255, 255, 255, var(--glassOpacity));
         --glass-blur: calc(var(--glassBlur) * 1px);
@@ -93,31 +155,362 @@ const pathname = Astro.url.pathname;
         --bg-image: var(--bgUrl);
         --avatar-main: var(--avatarMain);
         --avatar-sub: var(--avatarSub);
+        --visual-paper: var(--visualPaper);
+        --visual-ink: var(--visualInk);
+        --visual-mint: var(--visualMint);
+        --visual-coral: var(--visualCoral);
+        --visual-lilac: var(--visualLilac);
+        --visual-cream: var(--visualCream);
+        --visual-dot-size: var(--visualDotSize);
+        --visual-shadow: var(--visualShadow);
+        --console-accent: var(--consoleAccent);
+
+        /* === 通用 surface（页面背景 / 文字） === */
+        --surface-bg: #FAFAF7;
+        --surface-fg: #1A1A1F;
+        --surface-muted: #52525B;
+        --surface-faint: #8A8A94;
+        --surface-link: #6B5BFF;
+        --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --font-display: var(--font-body);
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+        /* === 笔记卡片 token === */
+        --note-bg: linear-gradient(135deg, #FFF9F0 0%, #FFE9C8 100%);
+        --note-border: rgba(255, 184, 0, 0.18);
+        --note-fg: #1A1A1F;
+        --note-muted: #52525B;
+        --note-tag-bg: rgba(255, 255, 255, 0.65);
+        --note-tag-fg: #6B5BFF;
+        --note-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        --note-shadow-hover: 0 12px 28px rgba(255, 196, 0, 0.2);
+
+        /* === 文章 / 日记卡片简化 token === */
+        --card-bg: #FFFFFF;
+        --card-fg: #1A1A1F;
+        --card-border: rgba(0, 0, 0, 0.06);
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+
+        /* === 长文 prose token === */
+        --prose-fg: var(--surface-fg);
+        --prose-muted: var(--surface-muted);
+        --prose-link: var(--surface-link);
+        --prose-code-bg: rgba(0, 0, 0, 0.05);
+        --prose-code-fg: var(--surface-fg);
+        --prose-pre-bg: #1A1A1F;
+        --prose-pre-fg: #E5E7EB;
+        --prose-quote-border: #C5A3FF;
+        --prose-quote-bg: rgba(197, 163, 255, 0.08);
+        --prose-quote-fg: #52525B;
+        --prose-hr: rgba(0, 0, 0, 0.08);
+        --prose-tag-bg: rgba(168, 230, 207, 0.5);
+        --prose-tag-fg: #065F46;
       }
 
-      /* Bento 浅色基底 — 让现有页面自然适配 */
       body {
-        background: #FAFAF7;
-        color: #1A1A1F;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--surface-bg);
+        color: var(--surface-fg);
+        font-family: var(--font-body);
         -webkit-font-smoothing: antialiased;
+        transition: background 320ms ease, color 320ms ease;
       }
+
+      /* ---------- bento (默认) ---------- */
+      /* 已在 :root 给出基线值，这里无需重复 */
+
+      /* ---------- paper ---------- */
+      html[data-theme="paper"] {
+        --surface-bg: #F7F2E7;
+        --surface-fg: #2A2520;
+        --surface-muted: #6B5C4A;
+        --surface-faint: #9A8D78;
+        --surface-link: #9A3232;
+        --font-body: 'Noto Serif SC', 'Source Han Serif', Georgia, serif;
+        --font-display: var(--font-body);
+
+        --note-bg: #FBF8EE;
+        --note-border: #D9C9A8;
+        --note-fg: #2A2520;
+        --note-muted: #6B5C4A;
+        --note-tag-bg: #EDE3CC;
+        --note-tag-fg: #9A3232;
+        --note-shadow: 0 1px 0 #E5D9BC, 0 2px 6px rgba(154, 50, 50, 0.08);
+        --note-shadow-hover: 0 1px 0 #E5D9BC, 0 8px 22px rgba(154, 50, 50, 0.18);
+
+        --card-bg: #FBF8EE;
+        --card-fg: #2A2520;
+        --card-border: #D9C9A8;
+        --card-shadow: 0 1px 0 #E5D9BC, 0 2px 6px rgba(154, 50, 50, 0.08);
+
+        --prose-code-bg: #EDE3CC;
+        --prose-code-fg: #2A2520;
+        --prose-pre-bg: #2A2520;
+        --prose-pre-fg: #FBF8EE;
+        --prose-quote-border: #9A3232;
+        --prose-quote-bg: rgba(154, 50, 50, 0.06);
+        --prose-quote-fg: #6B5C4A;
+        --prose-hr: #D9C9A8;
+        --prose-tag-bg: #EDE3CC;
+        --prose-tag-fg: #9A3232;
+      }
+      html[data-theme="paper"] .topnav { background: rgba(247, 242, 231, 0.92) !important; }
+
+      /* ---------- terminal ---------- */
+      html[data-theme="terminal"] {
+        --surface-bg: #0E0F12;
+        --surface-fg: #D6FFD6;
+        --surface-muted: #7FBA82;
+        --surface-faint: #4F8B58;
+        --surface-link: #3DFF8A;
+        --font-body: 'JetBrains Mono', ui-monospace, monospace;
+        --font-display: var(--font-body);
+
+        --note-bg: rgba(60, 255, 138, 0.04);
+        --note-border: rgba(60, 255, 138, 0.28);
+        --note-fg: #D6FFD6;
+        --note-muted: #7FBA82;
+        --note-tag-bg: rgba(60, 255, 138, 0.12);
+        --note-tag-fg: #3DFF8A;
+        --note-shadow: 0 0 0 1px rgba(60, 255, 138, 0.15) inset;
+        --note-shadow-hover: 0 0 0 1px rgba(60, 255, 138, 0.4) inset, 0 0 24px rgba(60, 255, 138, 0.18);
+
+        --card-bg: rgba(60, 255, 138, 0.04);
+        --card-fg: #D6FFD6;
+        --card-border: rgba(60, 255, 138, 0.22);
+        --card-shadow: 0 0 0 1px rgba(60, 255, 138, 0.12) inset;
+
+        --prose-code-bg: rgba(60, 255, 138, 0.10);
+        --prose-code-fg: #B8FFB8;
+        --prose-pre-bg: rgba(0, 0, 0, 0.4);
+        --prose-pre-fg: #D6FFD6;
+        --prose-quote-border: #3DFF8A;
+        --prose-quote-bg: rgba(60, 255, 138, 0.04);
+        --prose-quote-fg: #7FBA82;
+        --prose-hr: rgba(60, 255, 138, 0.2);
+        --prose-tag-bg: rgba(60, 255, 138, 0.12);
+        --prose-tag-fg: #3DFF8A;
+      }
+      html[data-theme="terminal"] .topnav {
+        background: rgba(14, 15, 18, 0.88) !important;
+        border-bottom: 1px solid rgba(60, 255, 138, 0.2) !important;
+      }
+      html[data-theme="terminal"] .topnav a,
+      html[data-theme="terminal"] .topnav .brand { color: #D6FFD6 !important; }
+
+      /* ---------- aurora ---------- */
+      html[data-theme="aurora"] {
+        --surface-bg: linear-gradient(135deg, #0F0420 0%, #1A0840 50%, #0F0420 100%);
+        --surface-fg: #F1ECFF;
+        --surface-muted: #B6A8E6;
+        --surface-faint: #7E70B0;
+        --surface-link: #C9A6FF;
+        --font-body: 'Inter', sans-serif;
+        --font-display: var(--font-body);
+
+        --note-bg: rgba(255, 255, 255, 0.06);
+        --note-border: rgba(201, 166, 255, 0.25);
+        --note-fg: #F1ECFF;
+        --note-muted: #B6A8E6;
+        --note-tag-bg: rgba(201, 166, 255, 0.18);
+        --note-tag-fg: #E2D1FF;
+        --note-shadow: 0 8px 28px rgba(76, 29, 149, 0.25);
+        --note-shadow-hover: 0 16px 40px rgba(162, 89, 255, 0.35);
+
+        --card-bg: rgba(255, 255, 255, 0.05);
+        --card-fg: #F1ECFF;
+        --card-border: rgba(201, 166, 255, 0.22);
+        --card-shadow: 0 8px 28px rgba(76, 29, 149, 0.25);
+
+        --prose-code-bg: rgba(201, 166, 255, 0.14);
+        --prose-code-fg: #E2D1FF;
+        --prose-pre-bg: rgba(0, 0, 0, 0.4);
+        --prose-pre-fg: #F1ECFF;
+        --prose-quote-border: #C9A6FF;
+        --prose-quote-bg: rgba(201, 166, 255, 0.08);
+        --prose-quote-fg: #B6A8E6;
+        --prose-hr: rgba(201, 166, 255, 0.2);
+        --prose-tag-bg: rgba(201, 166, 255, 0.18);
+        --prose-tag-fg: #E2D1FF;
+      }
+      html[data-theme="aurora"] body { background-attachment: fixed; }
+      html[data-theme="aurora"] .topnav {
+        background: rgba(15, 4, 32, 0.7) !important;
+        backdrop-filter: blur(16px);
+      }
+      html[data-theme="aurora"] .topnav a,
+      html[data-theme="aurora"] .topnav .brand { color: #F1ECFF !important; }
+
+      /* ---------- magazine ---------- */
+      html[data-theme="magazine"] {
+        --surface-bg: #FFFFFF;
+        --surface-fg: #0A0A0A;
+        --surface-muted: #4A4A4A;
+        --surface-faint: #888888;
+        --surface-link: #C8102E;
+        --font-body: 'Playfair Display', Georgia, 'Times New Roman', serif;
+        --font-display: var(--font-body);
+
+        --note-bg: #FFFFFF;
+        --note-border: #0A0A0A;
+        --note-fg: #0A0A0A;
+        --note-muted: #4A4A4A;
+        --note-tag-bg: #0A0A0A;
+        --note-tag-fg: #FFFFFF;
+        --note-shadow: 0 0 0 2px #0A0A0A;
+        --note-shadow-hover: 0 0 0 2px #C8102E;
+
+        --card-bg: #FFFFFF;
+        --card-fg: #0A0A0A;
+        --card-border: #0A0A0A;
+        --card-shadow: 0 0 0 1px #0A0A0A;
+
+        --prose-code-bg: #F2F2F2;
+        --prose-code-fg: #0A0A0A;
+        --prose-pre-bg: #0A0A0A;
+        --prose-pre-fg: #FFFFFF;
+        --prose-quote-border: #0A0A0A;
+        --prose-quote-bg: #FFFFFF;
+        --prose-quote-fg: #0A0A0A;
+        --prose-hr: #0A0A0A;
+        --prose-tag-bg: #0A0A0A;
+        --prose-tag-fg: #FFFFFF;
+      }
+      html[data-theme="magazine"] .topnav {
+        background: #FFFFFF !important;
+        border-bottom: 2px solid #0A0A0A !important;
+      }
+
+      /* ===== bento-webui — 多彩瓷砖 + 点阵 + 硬投影 ===== */
+      html[data-theme="bento-webui"] {
+        --surface-bg: var(--visual-paper);
+        --surface-fg: var(--visual-ink);
+        --surface-muted: #6B6358;
+        --surface-faint: #9B9485;
+        --surface-link: #064E3B;
+        --font-body: 'PingFang SC', 'Source Han Sans SC', system-ui, sans-serif;
+        --font-display: var(--font-body);
+
+        --note-bg: #FFFFFF;
+        --note-border: #1A1814;
+        --note-fg: #1A1814;
+        --note-muted: #6B6358;
+        --note-tag-bg: rgba(26,24,20,0.08);
+        --note-tag-fg: #064E3B;
+        --note-shadow: var(--visual-shadow);
+        --note-shadow-hover: 6px 6px 0 var(--visual-ink);
+
+        --card-bg: #FFFFFF;
+        --card-fg: #1A1814;
+        --card-border: #1A1814;
+        --card-shadow: var(--visual-shadow);
+
+        --prose-code-bg: rgba(26,24,20,0.06);
+        --prose-code-fg: #1A1814;
+        --prose-pre-bg: #1A1814;
+        --prose-pre-fg: #F8F4EC;
+        --prose-quote-border: #064E3B;
+        --prose-quote-bg: rgba(168,230,207,0.15);
+        --prose-quote-fg: #6B6358;
+        --prose-hr: rgba(26,24,20,0.12);
+        --prose-tag-bg: #A8E6CF;
+        --prose-tag-fg: #064E3B;
+
+        /* 点阵纹理变量 */
+        --bn-paper: var(--visual-paper);
+        --bn-ink: var(--visual-ink);
+        --bn-muted: #6B6358;
+        --bn-mint: var(--visual-mint);    --bn-mint-d: #064E3B;
+        --bn-coral: var(--visual-coral);  --bn-coral-d: #7C2D12;
+        --bn-lilac: var(--visual-lilac);  --bn-lilac-d: #4C1D95;
+        --bn-cream: var(--visual-cream);  --bn-cream-d: #5A3500;
+        --bn-sky: #B5D8E8;     --bn-sky-d: #1E3A5F;
+        --bn-peach: #FFCBA4;   --bn-peach-d: #6B2E0E;
+        --bn-plum: #C5A3FF;
+      }
+      html[data-theme="bento-webui"] body {
+        background: var(--surface-bg);
+        background-image:
+          radial-gradient(circle at 1px 1px, rgba(26,24,20,0.06) 1px, transparent 0);
+        background-size: var(--visual-dot-size) var(--visual-dot-size);
+        background-attachment: fixed;
+      }
+      html[data-theme="bento-webui"] .topnav {
+        background: #F8F4EC !important;
+        border-bottom: 2px solid #1A1814 !important;
+      }
+      html[data-theme="bento-webui"] .topnav a,
+      html[data-theme="bento-webui"] .topnav .brand { color: #1A1814 !important; }
+
+      /* ===== sticky-notes — 便签卡片墙 ===== */
+      html[data-theme="sticky-notes"] {
+        --surface-bg: var(--visual-paper);
+        --surface-fg: var(--visual-ink);
+        --surface-muted: #6B6358;
+        --surface-faint: #9B9485;
+        --surface-link: #7C2D12;
+        --font-body: 'PingFang SC', 'Source Han Sans SC', system-ui, sans-serif;
+        --font-display: var(--font-body);
+
+        --note-bg: linear-gradient(135deg, #FFE082 0%, #FFCCBC 100%);
+        --note-border: #1A1814;
+        --note-fg: #5A3500;
+        --note-muted: #7C2D12;
+        --note-tag-bg: rgba(255,255,255,0.55);
+        --note-tag-fg: #7C2D12;
+        --note-shadow: 3px 3px 0 #1A1814;
+        --note-shadow-hover: 5px 5px 0 #1A1814;
+
+        --card-bg: #FFFFFF;
+        --card-fg: #1A1814;
+        --card-border: #1A1814;
+        --card-shadow: 4px 4px 0 #1A1814;
+
+        --prose-code-bg: rgba(26,24,20,0.06);
+        --prose-code-fg: #1A1814;
+        --prose-pre-bg: #1A1814;
+        --prose-pre-fg: #F8F4EC;
+        --prose-quote-border: #7C2D12;
+        --prose-quote-bg: rgba(255,204,188,0.15);
+        --prose-quote-fg: #6B6358;
+        --prose-hr: rgba(26,24,20,0.12);
+        --prose-tag-bg: #FFE082;
+        --prose-tag-fg: #5A3500;
+
+        /* 便签主题变量 */
+        --sn-paper: var(--visual-paper);
+        --sn-ink: var(--visual-ink);
+        --sn-muted: #6B6358;
+        --sn-mint: var(--visual-mint);    --sn-mint-d: #064E3B;
+        --sn-coral: var(--visual-coral);  --sn-coral-d: #7C2D12;
+        --sn-lilac: var(--visual-lilac);  --sn-lilac-d: #4C1D95;
+        --sn-cream: var(--visual-cream);  --sn-cream-d: #5A3500;
+        --sn-sky: #B5D8E8;     --sn-sky-d: #1E3A5F;
+        --sn-peach: #FFCBA4;   --sn-peach-d: #6B2E0E;
+        --sn-plum: #C5A3FF;
+      }
+      html[data-theme="sticky-notes"] body {
+        background: var(--surface-bg);
+        background-image:
+          radial-gradient(circle at 1px 1px, rgba(26,24,20,0.05) 1px, transparent 0);
+        background-size: var(--visual-dot-size) var(--visual-dot-size);
+        background-attachment: fixed;
+      }
+      html[data-theme="sticky-notes"] .topnav {
+        background: #F8F4EC !important;
+        border-bottom: 2px solid #1A1814 !important;
+      }
+      html[data-theme="sticky-notes"] .topnav a,
+      html[data-theme="sticky-notes"] .topnav .brand { color: #1A1814 !important; }
     </style>
   </head>
 
   <body class="antialiased min-h-screen">
-    <TopNav pathname={pathname} brand={settings.nickname || '数字花园'} />
+    <div id="reading-progress" class="progress-bar"></div>
+    <TopNav pathname={pathname} brand={settings.nickname || 'scnario'} />
 
     <div class="page-shell">
       <main class="page-main">
-        {isMarkdown && <HeroHeader title={pageTitle} />}
-        {isMarkdown ? (
-          <article class="hifi-card">
-            <slot />
-          </article>
-        ) : (
-          <slot />
-        )}
+        <slot />
       </main>
 
       {showSidebar && (
@@ -129,7 +522,6 @@ const pathname = Astro.url.pathname;
     </div>
 
     <MusicPlayer />
-    <ThemeSwitcher active={activeTheme} basePath="/" />
 
     <style>
       .page-shell {
@@ -147,6 +539,17 @@ const pathname = Astro.url.pathname;
         display: flex; flex-direction: column; gap: 24px;
         position: sticky;
         top: 80px;
+      }
+
+      .progress-bar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--surface-link), var(--visual-coral, #FF8A80));
+        z-index: 200;
+        width: 0%;
+        transition: width 120ms linear;
+        border-radius: 0 2px 2px 0;
       }
       @media (max-width: 1024px) {
         .page-aside { display: none; }
@@ -175,8 +578,19 @@ const pathname = Astro.url.pathname;
               setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg><span>Copy</span>'; }, 2000);
             });
           });
-        });
       });
-    </script>
+    });
+
+    // 阅读进度条
+    const bar = document.getElementById('reading-progress');
+    if (bar) {
+      window.addEventListener('scroll', () => {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = docHeight > 0 ? Math.min((scrollTop / docHeight) * 100, 100) : 0;
+        bar.style.width = `${progress}%`;
+      }, { passive: true });
+    }
+  </script>
   </body>
 </html>

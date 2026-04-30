@@ -1,7 +1,6 @@
 ---
 // 风格原型 · Paper Zen · 纸感 / 和风 · 极适合日记本气质
 // 米色纸底 + 衬线字体 + 墨水滴装饰 + 慢速淡入
-import ThemeSwitcher from '../../components/ThemeSwitcher.astro';
 const posts = [
   { slug: 'xmod', title: 'XanMod 内核与 BBRv3 调优', excerpt: '一键编译 XanMod 并启用 BBRv3。', tag: 'Linux', date: '三月十八日' },
   { slug: 'vaultwarden', title: '自建密码保险柜', excerpt: 'Docker + Cloudflare Tunnel。', tag: '自建', date: '三月四日' },
@@ -223,7 +222,7 @@ const diaries = [
       <section style="display: flex; align-items: center; gap: 24px;">
         <div style="width: 72px; height: 72px; border-radius: 999px; background: var(--paper-deep); border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0;">🖋️</div>
         <div>
-          <div class="hand" style="font-size: 26px; color: var(--cinnabar);">twj0</div>
+          <div class="hand" style="font-size: 26px; color: var(--cinnabar);">scnario</div>
           <div style="font-size: 14px; color: var(--ink-mute); margin-top: 2px;">定居于命令行与文字之间。写技术笔记，记每日杂感。</div>
         </div>
       </section>
@@ -233,6 +232,5 @@ const diaries = [
         <strong>📝 Paper Zen 原型</strong> — 纸感 / 和风 / 日记气质浓厚。适合做 <code style="font-family: monospace;">/diary</code> 页的专用 Layout，博客部分可仍用 Bento 形成"理性 × 感性"对照。
       </div>
     </main>
-    <ThemeSwitcher active="paper" />
   </body>
 </html>

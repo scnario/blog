@@ -30,7 +30,8 @@ export interface Note {
   id: string;
   slug: string;
   title: string;
-  excerpt: string;               // 笔记的"正文"就放这里（短）
+  content: string;
+  excerpt: string;
   tag: string;
   emoji: string;
   created: string;
@@ -70,6 +71,15 @@ export interface SiteSettings {
   music_artist: string;
   active_theme: string;          // 'bento' | 'paper' | ...
   bento_layout_preset: string;   // 'default' | 'articles-first' | 'diary-focus'
+  visual_paper: string;
+  visual_ink: string;
+  visual_mint: string;
+  visual_coral: string;
+  visual_lilac: string;
+  visual_cream: string;
+  visual_dot_size: number;
+  visual_shadow: string;
+  console_accent: string;
   // 原始记录（图片 URL 拼接需要）
   _raw: any;
 }
@@ -114,6 +124,10 @@ function safe<T>(v: T | undefined | null, fallback: T): T {
   return v === undefined || v === null ? fallback : v;
 }
 
+function pbString(v: string): string {
+  return v.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 // ------------------------------ Settings ------------------------------
 
 export async function getSettings(): Promise<SiteSettings> {
@@ -134,16 +148,25 @@ export async function getSettings(): Promise<SiteSettings> {
       bg_image: pbFileUrl(raw, raw?.bg_image),
       avatar_main: pbFileUrl(raw, raw?.avatar_main),
       avatar_sub: pbFileUrl(raw, raw?.avatar_sub),
-      nickname: safe(raw?.nickname, 'twj0'),
+      nickname: safe(raw?.nickname, 'scnario'),
       tagline: safe(raw?.tagline, 'Day by day, life by life.'),
       bio: safe(raw?.bio, '一个把技术笔记、工具碎片和日常杂感放在同一口井里的地方。'),
-      social_github: safe(raw?.social_github, ''),
+      social_github: raw?.social_github || 'https://github.com/scnario/blog',
       social_email: safe(raw?.social_email, ''),
       music_url: safe(raw?.music_url, ''),
       music_title: safe(raw?.music_title, ''),
       music_artist: safe(raw?.music_artist, ''),
-      active_theme: safe(raw?.active_theme, 'bento'),
+      active_theme: safe(raw?.active_theme, 'bento-webui'),
       bento_layout_preset: safe(raw?.bento_layout?.preset ?? raw?.bento_layout_preset, 'default'),
+      visual_paper: safe(raw?.visual_paper, '#F8F4EC'),
+      visual_ink: safe(raw?.visual_ink, '#1A1814'),
+      visual_mint: safe(raw?.visual_mint, '#A8E6CF'),
+      visual_coral: safe(raw?.visual_coral, '#FFCCBC'),
+      visual_lilac: safe(raw?.visual_lilac, '#E0BBE4'),
+      visual_cream: safe(raw?.visual_cream, '#FFE082'),
+      visual_dot_size: safe(raw?.visual_dot_size, 24),
+      visual_shadow: safe(raw?.visual_shadow, '4px 4px 0 #1A1814'),
+      console_accent: safe(raw?.console_accent, '#B8311E'),
       _raw: raw,
     };
   });
@@ -171,6 +194,7 @@ function normalizeNote(r: any): Note {
     id: r.id,
     slug: safe(r.slug, r.id),
     title: safe(r.title, '(untitled)'),
+    content: safe(r.content, ''),
     excerpt: safe(r.excerpt, (r.content || '').slice(0, 200)),
     tag: safe(r.tag, '灵感'),
     emoji: safe(r.emoji, '💡'),
@@ -224,16 +248,105 @@ export async function getLatestNotes(limit = 10): Promise<Note[]> {
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
-    const r = await pb.collection('posts').getFirstListItem(`slug = "${slug}"`);
+    const r = await pb.collection('posts').getFirstListItem(
+      `slug = "${pbString(slug)}" && is_published = true`,
+    );
     return normalizeArticle(r);
   } catch {
     return null;
   }
 }
 
+/** 获取当前文章的前一篇和后一篇（按创建时间） */
+export async function getAdjacentArticles(slug: string): Promise<{ prev: Article | null; next: Article | null }> {
+  const current = await getArticleBySlug(slug);
+  if (!current) return { prev: null, next: null };
+
+  try {
+    // 上一篇：更早发布的
+    const prevResult = await pb.collection('posts').getList(1, 1, {
+      filter: `is_published = true && type = 'article' && created < "${current.created}"`,
+      sort: '-created',
+    });
+    // 下一篇：更晚发布的
+    const nextResult = await pb.collection('posts').getList(1, 1, {
+      filter: `is_published = true && type = 'article' && created > "${current.created}"`,
+      sort: '+created',
+    });
+    return {
+      prev: prevResult.items.length > 0 ? normalizeArticle(prevResult.items[0]) : null,
+      next: nextResult.items.length > 0 ? normalizeArticle(nextResult.items[0]) : null,
+    };
+  } catch {
+    return { prev: null, next: null };
+  }
+}
+
+// ------------------------------ 分页 + 标签过滤 ------------------------------
+
+export interface PaginatedResult<T> {
+  items: T[];
+  page: number;
+  perPage: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+const PER_PAGE = 12;
+
+export async function getPaginatedArticles(page = 1, perPage = PER_PAGE): Promise<PaginatedResult<Article>> {
+  const cacheKey = `articles:p:${page}:${perPage}`;
+  return memo(cacheKey, async () => {
+    const fetchWith = async (filter: string) => {
+      const result = await pb.collection('posts').getList(page, perPage, {
+        filter, sort: '-created',
+      });
+      return {
+        items: result.items.map(normalizeArticle),
+        page: result.page,
+        perPage: result.perPage,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages,
+      };
+    };
+    try {
+      return await fetchWith(`is_published = true && type = 'article'`);
+    } catch {
+      try {
+        return await fetchWith(`is_published = true`);
+      } catch (e) {
+        console.warn('[queries] getPaginatedArticles failed', e);
+        return { items: [], page: 1, perPage, totalItems: 0, totalPages: 0 };
+      }
+    }
+  });
+}
+
+export async function getArticlesByTag(tag: string, page = 1, perPage = PER_PAGE): Promise<PaginatedResult<Article>> {
+  const cacheKey = `articles:tag:${tag}:${page}:${perPage}`;
+  return memo(cacheKey, async () => {
+    try {
+      const filter = `is_published = true && tag = "${pbString(tag)}"`;
+      const result = await pb.collection('posts').getList(page, perPage, {
+        filter, sort: '-created',
+      });
+      return {
+        items: result.items.map(normalizeArticle),
+        page: result.page,
+        perPage: result.perPage,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages,
+      };
+    } catch (e) {
+      console.warn(`[queries] getArticlesByTag("${tag}") failed`, e);
+      return { items: [], page: 1, perPage, totalItems: 0, totalPages: 0 };
+    }
+  });
+}
+
 export async function getNoteBySlug(slug: string): Promise<Note | null> {
   try {
-    const r = await pb.collection('posts').getFirstListItem(`slug = "${slug}" && type = 'note'`);
+    const r = await pb.collection('posts').getFirstListItem(`slug = "${pbString(slug)}" && type = 'note'`);
     return normalizeNote(r);
   } catch {
     return null;
@@ -264,7 +377,7 @@ export async function getRecentDiaries(limit = 5): Promise<Diary[]> {
         sort: '-date',
       });
       return result.items.map(normalizeDiary);
-    } catch (e) {
+    } catch {
       // 表还没建 = 0 日记
       return [];
     }
@@ -274,7 +387,7 @@ export async function getRecentDiaries(limit = 5): Promise<Diary[]> {
 export async function getDiaryBySlug(slug: string): Promise<Diary | null> {
   try {
     const r = await pb.collection('diaries').getFirstListItem(
-      `slug = "${slug}" && is_public = true`,
+      `slug = "${pbString(slug)}" && is_public = true`,
     );
     return normalizeDiary(r);
   } catch {
