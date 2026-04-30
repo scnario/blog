@@ -1,6 +1,6 @@
-# 数字花园 · Astro + PocketBase
+# 博客 · Astro + PocketBase
 
-个人博客 / 笔记 / 日记三合一的“数字花园”。前端 Astro 6 SSR，数据走 PocketBase BaaS，内置 7 套主题、12 栅 Bento 首页、6-tab 控制台、SSR 内存缓存、Docker 部署和一键导入样本。
+个人博客 / 笔记 / 日记三合一的“数字花园”。前端 Astro 6 SSR，数据走 PocketBase BaaS，内置 7 套主题、12 栅 Bento 首页、6-tab 控制台、SSR 内存缓存、Docker 部署和一键导入样本。示例网站：https://showcase.91917788.xyz/
 
 ## 项目亮点
 
