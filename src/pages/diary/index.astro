@@ -1,4 +1,5 @@
 ---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables assist/source/organizeImports: Astro frontmatter symbols are consumed by the template.
 /**
  * 日记时间线 — 仅显示 is_public=true 的条目
  * 按月份分组；diaries 表不存在时显示空状态
@@ -18,7 +19,8 @@ function groupByMonth(items: Diary[]): Map<string, Diary[]> {
       ? '未知'
       : `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
     if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(d);
+    const bucket = map.get(key);
+    if (bucket) bucket.push(d);
   }
   return map;
 }
@@ -31,7 +33,7 @@ function fmtDate(s: string): string {
 }
 
 function makeExcerpt(s: string): string {
-  return (s || '').slice(0, 120).replace(/[#*`>\-]/g, '') + '…';
+  return `${(s || '').slice(0, 120).replace(/[#*`>-]/g, '')}…`;
 }
 
 const moodEmoji: Record<string, string> = {
@@ -59,13 +61,17 @@ const moodEmoji: Record<string, string> = {
       </div>
     </div>
   ) : (
-    <div class="timeline">
+    <div class="timeline sn-diary-grid">
       {[...grouped.entries()].map(([month, items]) => (
         <section class="month-block">
           <h2 class="month-label mono">{month}</h2>
           <ul class="entries">
-            {items.map(d => (
-              <li class="entry">
+            {items.map((d, i) => {
+              const colors = ['mint', 'coral', 'lilac', 'cream', 'sky', 'peach'];
+              const rot = (i % 2 === 0 ? -1.5 : 1.2);
+              return (
+              <li class={`entry sn-diary-card ${colors[i % colors.length]}`} style={`transform: rotate(${rot}deg);`}>
+                <span class="sn-tape"></span>
                 <a href={`/diary/${d.slug}`}>
                   <div class="entry-meta">
                     <span class="dot" />
@@ -77,7 +83,8 @@ const moodEmoji: Record<string, string> = {
                   <p class="entry-excerpt">{makeExcerpt(d.content)}</p>
                 </a>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ))}
@@ -93,22 +100,22 @@ const moodEmoji: Record<string, string> = {
       letter-spacing: 0.1em;
       margin: 0 0 14px;
     }
-    .entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+    .entries { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
     .entry a {
       display: block;
-      padding: 18px 22px;
-      border-radius: 18px;
-      background: linear-gradient(135deg,#FFFCEB 0%,#FFF6CF 100%);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      padding: 0;
+      background: transparent;
+      box-shadow: none;
       text-decoration: none;
       color: inherit;
       transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms;
-      border: 1px solid rgba(255, 224, 130, 0.4);
+      border: 0;
     }
     .entry a:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 28px rgba(255, 196, 0, 0.2);
+      transform: none;
+      box-shadow: none;
     }
+    .entry:hover { transform: rotate(0deg) scale(1.03) !important; z-index: 5; }
     .entry-meta {
       display: flex;
       align-items: center;
@@ -139,4 +146,11 @@ const moodEmoji: Record<string, string> = {
     }
     .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
   </style>
+
+  <script>
+    import { inViewStagger } from '../../lib/motion';
+    document.addEventListener('astro:page-load', () => {
+      inViewStagger('.entries > .entry', { staggerMs: 80, y: 20 });
+    });
+  </script>
 </Layout>

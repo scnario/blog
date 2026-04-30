@@ -4,7 +4,7 @@
  * 架构原则：
  * - 每个主题 = 一组完整的视觉 / 动效 / 结构（不是简单的颜色变量切换）
  * - 不同 route 类型可独立选择不同主题（首页 Bento + 日记 Paper 这种组合是一等公民）
- * - 当前主题来源优先级：cookie > PB settings.active_theme > 默认 'bento'
+ * - 当前主题来源优先级：cookie > PB settings.active_theme > 默认 'bento-webui'
  *
  * 如何扩展新主题：
  * 1. 在 THEMES 注册表里加一项
@@ -12,7 +12,7 @@
  * 3. 可选：在 PB settings 表里加 active_theme 字段作为站点默认
  */
 
-export type ThemeSlug = 'bento' | 'paper' | 'terminal' | 'aurora' | 'magazine';
+export type ThemeSlug = 'bento' | 'paper' | 'terminal' | 'aurora' | 'magazine' | 'bento-webui' | 'sticky-notes';
 export type RouteKind = 'home' | 'post' | 'diary' | 'tool';
 
 export interface ThemeMeta {
@@ -31,8 +31,8 @@ export interface ThemeMeta {
 export const THEMES: Record<ThemeSlug, ThemeMeta> = {
   bento: {
     slug: 'bento',
-    name: 'Bento Grid',
-    tagline: '明亮彩色瓷砖，信息聚合',
+    name: 'Bento Legacy',
+    tagline: '旧版柔和 Bento（仅保留作回退）',
     icon: '🍱',
     color: '#A8E6CF',
     darkMode: false,
@@ -79,9 +79,29 @@ export const THEMES: Record<ThemeSlug, ThemeMeta> = {
     supports: ['home', 'post'],
     previewPath: '/prototypes/magazine',
   },
+  'bento-webui': {
+    slug: 'bento-webui',
+    name: 'Bento Maximalist',
+    tagline: '多彩瓷砖 + 点阵纹理 + 硬投影',
+    icon: '🍱',
+    color: '#A8E6CF',
+    darkMode: false,
+    supports: ['home', 'post', 'diary', 'tool'],
+    previewPath: '/prototypes/bento-webui',
+  },
+  'sticky-notes': {
+    slug: 'sticky-notes',
+    name: 'Sticky Notes Wall',
+    tagline: '便签卡片墙 · 图钉 + 胶带 + 手账拼贴',
+    icon: '📌',
+    color: '#FFE082',
+    darkMode: false,
+    supports: ['home', 'post', 'diary'],
+    previewPath: '/prototypes/sticky-notes',
+  },
 };
 
-export const DEFAULT_THEME: ThemeSlug = 'bento';
+export const DEFAULT_THEME: ThemeSlug = 'bento-webui';
 export const COOKIE_NAME = 'site_theme';
 
 export function isThemeSlug(v: unknown): v is ThemeSlug {

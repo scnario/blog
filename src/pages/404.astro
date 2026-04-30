@@ -1,0 +1,129 @@
+---
+/**
+ * 404 — 主题感知的未找到页面
+ */
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="404 · 页面未找到" showSidebar={false}>
+  <div class="not-found">
+    <div class="glitch" data-text="404">404</div>
+    <h1>这个页面飘走了</h1>
+    <p class="muted">你访问的页面不存在，或者已经被移动到新的位置。</p>
+    <div class="actions">
+      <a href="/" class="btn-primary">← 回到首页</a>
+      <a href="/articles" class="btn-secondary">看博客</a>
+    </div>
+  </div>
+
+  <style>
+    .not-found {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .glitch {
+      font-family: var(--font-mono);
+      font-size: clamp(80px, 15vw, 140px);
+      font-weight: 900;
+      color: var(--surface-fg);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      position: relative;
+    }
+    .glitch::before,
+    .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      opacity: 0.4;
+    }
+    .glitch::before {
+      color: var(--visual-coral, #FF8A80);
+      animation: glitch-shift 2.4s infinite ease-in-out alternate-reverse;
+      clip-path: polygon(0 20%, 100% 20%, 100% 30%, 0 30%);
+    }
+    .glitch::after {
+      color: var(--visual-lilac, #C5A3FF);
+      animation: glitch-shift 2.8s infinite ease-in-out alternate;
+      clip-path: polygon(0 60%, 100% 60%, 100% 70%, 0 70%);
+    }
+
+    @keyframes glitch-shift {
+      0%   { transform: translate(0); }
+      25%  { transform: translate(-3px, 2px); }
+      50%  { transform: translate(2px, -1px); }
+      75%  { transform: translate(-1px, -2px); }
+      100% { transform: translate(1px, 1px); }
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 3.5vw, 32px);
+      font-weight: 700;
+      margin: 16px 0 12px;
+      color: var(--surface-fg);
+    }
+
+    .muted {
+      color: var(--surface-muted);
+      font-size: 15px;
+      margin: 0 0 32px;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary, .btn-secondary {
+      padding: 12px 22px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 220ms cubic-bezier(.2,.7,.2,1), box-shadow 220ms;
+    }
+
+    .btn-primary {
+      background: var(--surface-fg);
+      color: var(--surface-bg);
+      border: 2px solid var(--surface-fg);
+      box-shadow: 3px 3px 0 var(--visual-ink, #1A1814);
+    }
+    .btn-primary:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 var(--visual-ink, #1A1814);
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      color: var(--surface-fg);
+      border: 2px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+    }
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--note-shadow-hover);
+    }
+
+    /* magazine — 方正感 */
+    html[data-theme="magazine"] .btn-primary,
+    html[data-theme="magazine"] .btn-secondary { border-radius: 0; }
+
+    /* reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .glitch::before, .glitch::after { animation: none !important; }
+      .btn-primary, .btn-secondary { transform: none !important; }
+    }
+  </style>
+</Layout>

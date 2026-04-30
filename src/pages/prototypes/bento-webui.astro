@@ -1,0 +1,201 @@
+---
+// 原型 — Bento Maximalist Plus（移植自 D:\projects\webui\bento\）
+// 独立于 Layout.astro，使用 mock 数据 + 点阵纹理 + 硬投影
+// 目的：验证 webui Bento 风格（多彩瓷砖 / 海报感 / 贴纸装饰）在 Astro 中的视觉效果
+
+import '../../styles/bento-webui.css';
+
+const posts = [
+  { slug: 'xmod', title: '安装XanMod内核开启BBRv3', excerpt: '一键编译 XanMod 并启用 BBRv3，适配 Debian / Ubuntu。', tag: 'Linux', emoji: '🐧', date: '2026-03-18', minutes: 14 },
+  { slug: 'vaultwarden', title: 'Vaultwarden 私有化部署', excerpt: '用 Docker + Cloudflare Tunnel 搭一个密码保险柜。', tag: '自建服务', emoji: '🔐', date: '2026-03-04', minutes: 11 },
+  { slug: 'create-blog', title: 'Webhook 自动部署博客', excerpt: 'Git push 触发 Webhook，服务器自动 pull+build。', tag: 'DevOps', emoji: '⚙️', date: '2026-02-22', minutes: 9 },
+  { slug: 'astro-ssr', title: 'Astro SSR 性能优化笔记', excerpt: '从 3.2s 到 0.8s，做对了 5 件事。', tag: 'Frontend', emoji: '🚀', date: '2026-02-10', minutes: 22 },
+  { slug: 'pocketbase', title: 'PocketBase 作为 BaaS 的边界', excerpt: '能做什么、不能做什么，以及我踩的坑。', tag: 'Backend', emoji: '🗄️', date: '2026-01-28', minutes: 11 },
+];
+
+const diaries = [
+  { date: '04.22', weekday: '周三', mood: '专注', weather: '晴', title: '第一次用 Motion One' },
+  { date: '04.15', weekday: '周二', mood: '平静', weather: '雨', title: '深夜咖啡和 Astro 文档' },
+  { date: '04.08', weekday: '周一', mood: '兴奋', weather: '晴', title: '推翻了黑胶风格' },
+];
+
+const tags = [
+  { name: '前端', count: 23 }, { name: '设计', count: 18 }, { name: '随笔', count: 14 },
+  { name: '工具', count: 11 }, { name: '后端', count: 9 }, { name: '阅读', count: 7 },
+  { name: '色彩', count: 5 }, { name: '响应式', count: 5 },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bento Maximalist · 数字花园</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet" />
+  </head>
+  <body style="margin:0; padding:0; background:#F8F4EC; color:#1A1814; font-family:'Inter',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;">
+    <div class="bn">
+      <!-- TopNav -->
+      <header class="bn-top">
+        <div class="bn-logo">
+          <span class="bn-logo-mark">🌱</span>
+          <span>数字花园</span>
+        </div>
+        <nav class="bn-nav">
+          <a class="active">首页</a>
+          <a href="#">博客</a>
+          <a href="#">笔记</a>
+          <a href="#">日记</a>
+          <a href="#">控制台</a>
+        </nav>
+        <div class="bn-top-r">
+          <span class="bn-pill-mono">⌘ K</span>
+          <div class="bn-avatar"></div>
+        </div>
+      </header>
+
+      <!-- 首页 Bento Grid -->
+      <div class="bn-grid">
+
+        <!-- Hero -->
+        <div class="t t-hero">
+          <div class="bn-eyebrow"><span class="bn-dot"/> LIVE · 第 1124 天</div>
+          <h1 class="bn-h1">在数字花园里慢慢种东西</h1>
+          <p class="bn-lead">前端 / 系统工程 / 阅读 / 偶尔写诗。这里是我把工作笔记、书摘和半成品想法堆在一起的地方。</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="bn-btn dark">阅读最新长文</button>
+            <button class="bn-btn">浏览全部</button>
+          </div>
+          <!-- 贴纸装饰 -->
+          <div class="bn-stickers" aria-hidden="true">
+            <div class="bn-st bn-st1">★</div>
+            <div class="bn-st bn-st2">●</div>
+            <div class="bn-st bn-st3">▲</div>
+            <div class="bn-st bn-st4">＋</div>
+            <div class="bn-st bn-st5">◐</div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="t t-stat-1">
+          <div class="bn-stat-l">公开博客</div>
+          <div class="bn-stat-v">47</div>
+          <div class="bn-stat-trend">+3 / 月</div>
+        </div>
+        <div class="t t-stat-2">
+          <div class="bn-stat-l">私人笔记</div>
+          <div class="bn-stat-v">213</div>
+          <div class="bn-stat-trend">+12 / 月</div>
+        </div>
+        <div class="t t-stat-3">
+          <div class="bn-stat-l">日记</div>
+          <div class="bn-stat-v">318</div>
+          <div class="bn-stat-trend">+18 / 月</div>
+        </div>
+
+        <!-- Featured Article -->
+        <div class="t t-feat" style="background:linear-gradient(135deg, #FF6B35 0%, #F7931E 50%, #FFD23F 100%);">
+          <div class="bn-feat-tag">最新长文 · 04.18</div>
+          <h2>Svelte 5 Runes 之后，我们需要重新理解响应式</h2>
+          <p>$state、$derived、$effect 不只是语法糖。它们把 Vue 的 ref、Solid 的 signal 和 React 的 hooks 缝在一起。</p>
+          <div class="bn-feat-meta">前端 · 14 分钟阅读 →</div>
+        </div>
+
+        <!-- Mood -->
+        <div class="t t-mood">
+          <div class="bn-card-h">本周心情</div>
+          <div class="bn-mood-row">
+            {[['一','平','l1'],['二','平','l1'],['三','明','l3'],['四','倦','l4'],['五','焦','l4'],['六','明','l3'],['日','静','l2']].map(([d,m,c]) => (
+              <div class="bn-mood-cell">
+                <div class={`bn-mood-blob ${c}`}/>
+                <div class="bn-mood-d">{d}</div>
+                <div class="bn-mood-m">{m}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="t t-notes">
+          <div class="bn-card-h">最新笔记 <a class="bn-card-more" href="#">全部 213 →</a></div>
+          {[
+            { id:'n01', title:'信号 vs 观察者', tags:['前端','响应式'] },
+            { id:'n02', title:'Push vs Pull 的代价', tags:['架构'] },
+            { id:'n03', title:'卡片笔记不是把笔记写成卡片', tags:['方法'] },
+          ].map(n => (
+            <div class="bn-note">
+              <div class="bn-note-id">{n.id.toUpperCase()}</div>
+              <div>
+                <div class="bn-note-t">{n.title}</div>
+                <div class="bn-note-m">{n.tags.map(t => '#'+t).join(' ')}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <!-- Tags -->
+        <div class="t t-tags">
+          <div class="bn-card-h" style="color:#F8F4EC">话题</div>
+          <div class="bn-tagcloud">
+            {tags.map(t => (
+              <span class="bn-tag-pill" style={`font-size:${13+t.count*0.35}px`}>
+                {t.name}<span class="c">{t.count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <!-- Diary -->
+        <div class="t t-diary">
+          <div class="bn-card-h">最近日记 <a class="bn-card-more" href="#">全部 →</a></div>
+          {diaries.map(d => (
+            <div class="bn-diary-row">
+              <div class="bn-diary-date">{d.date}</div>
+              <div>
+                <div class="bn-diary-t">{d.title}</div>
+                <div class="bn-diary-m">{d.weekday} · {d.weather} · {d.mood}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <!-- Music -->
+        <div class="t t-music">
+          <div class="bn-card-h" style="color:#5A3500">正在播放</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
+            <div class="bn-disc"/>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:#5A3500;">Spiegel im Spiegel</div>
+              <div style="font-size:11px;color:#8C5A00;margin-top:2px;">Arvo Pärt · 9:36</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <div class="t t-profile">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="bn-avatar-big"/>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Herschel</div>
+              <div style="font-size:11px;color:#666;">在数字花园里慢慢种东西</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <span class="bn-chip">GitHub</span>
+            <span class="bn-chip">Email</span>
+            <span class="bn-chip">RSS</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 提示条 -->
+    <div style="margin:32px;padding:16px 20px;background:#FFF3CD;border:2px solid #F59E0B;border-radius:12px;font-size:13px;color:#78350F;box-shadow:3px 3px 0 #F59E0B;">
+      <strong>🍱 Bento Maximalist Plus</strong> — 移植自 <code>D:\projects\webui\bento\</code>。核心视觉：点阵纹理 + 2px 硬描边 + 4px offset 阴影 + 6 色 pastel 瓷砖 + 贴纸装饰。CSS 文件：<code>src/styles/bento-webui.css</code>。
+    </div>
+  </body>
+</html>

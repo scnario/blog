@@ -1,0 +1,149 @@
+<div class="tab-panel active" data-panel="posts">
+  <div class="panel-head">
+    <h2>文章</h2>
+    <p class="muted">长篇博客内容，写入 <code>posts</code> 表 <code>type='article'</code>。</p>
+  </div>
+
+  <div class="card">
+    <h3>新建文章</h3>
+    <div class="form-grid">
+      <label class="span-2">标题
+        <input type="text" id="post-title" placeholder="文章标题…" />
+      </label>
+      <label>Slug
+        <input type="text" id="post-slug" placeholder="my-first-article" />
+      </label>
+      <label>标签
+        <input type="text" id="post-tag" placeholder="技术 / 思考 / 教程 …" />
+      </label>
+      <label>Emoji
+        <input type="text" id="post-emoji" placeholder="📰" maxlength="4" />
+      </label>
+      <label class="span-2">摘要（Bento 卡 / 列表预览）
+        <textarea id="post-excerpt" rows="2" placeholder="一两句话引导读者点进来"></textarea>
+      </label>
+      <label class="span-2">正文 (Markdown)
+        <textarea id="post-content" rows="14" placeholder="# 开始写吧…"></textarea>
+      </label>
+      <label class="checkbox span-2">
+        <input type="checkbox" id="post-publish" checked />
+        <span>立即发布 <code>is_published = true</code></span>
+      </label>
+    </div>
+    <div class="row">
+      <button id="post-save-btn" class="btn-primary">保存文章</button>
+      <span id="post-status" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>已有文章 <button id="post-refresh-btn" class="btn-ghost small">刷新</button></h3>
+    <div id="post-list" class="list">
+      <div class="muted small">登录后自动加载…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { $, bustCache, checked, errorMessage, escapeHtml, fetchPostsByType, isUnknownFieldError, pb, registerConsoleLoader, setVal, status, updateSidecar, val } from '../../lib/console-client';
+
+  type PostRecord = { id: string; title?: string; slug?: string; is_published?: boolean };
+
+  async function loadPosts() {
+    const list = $('post-list');
+    if (!list) return;
+    list.innerHTML = '<div class="muted small">加载中…</div>';
+    try {
+      const result = await fetchPostsByType('article');
+      const items = result.items as PostRecord[];
+      if (!items.length) {
+        list.innerHTML = '<div class="muted small">暂无文章。</div>';
+        updateSidecar({ posts: 0 });
+        return;
+      }
+      updateSidecar({ posts: items.length });
+      list.innerHTML = '';
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const pubBadge = it.is_published
+          ? '<span class="badge public">已发布</span>'
+          : '<span class="badge private">草稿</span>';
+        row.innerHTML = `
+          <span class="badge">文章</span>${pubBadge}
+          <div class="title">${escapeHtml(it.title || '(untitled)')}</div>
+          <div class="muted small mono">${(it.slug || it.id).slice(0, 24)}</div>
+          <div class="actions">
+            <button data-act="toggle" data-id="${it.id}" data-pub="${!!it.is_published}">
+              ${it.is_published ? '下架' : '发布'}
+            </button>
+            <button data-act="del" data-id="${it.id}" class="danger">删除</button>
+          </div>
+        `;
+        list.appendChild(row);
+      }
+      list.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => onPostAction(btn));
+      });
+    } catch (e) {
+      list.innerHTML = `<div class="error">加载失败：${escapeHtml(errorMessage(e))}</div>`;
+    }
+  }
+
+  async function onPostAction(btn: HTMLButtonElement) {
+    const id = btn.dataset.id!;
+    const act = btn.dataset.act!;
+    if (act === 'del') {
+      if (!confirm('确定删除？此操作不可恢复。')) return;
+      try { await pb.collection('posts').delete(id); await bustCache(); await loadPosts(); }
+      catch (e) { alert('删除失败：' + errorMessage(e)); }
+    } else if (act === 'toggle') {
+      const wasPub = btn.dataset.pub === 'true';
+      try { await pb.collection('posts').update(id, { is_published: !wasPub }); await bustCache(); await loadPosts(); }
+      catch (e) { alert('更新失败：' + errorMessage(e)); }
+    }
+  }
+
+  $('post-refresh-btn')?.addEventListener('click', () => loadPosts());
+  document.addEventListener('click', async (e) => {
+    if ((e.target as HTMLElement)?.id !== 'post-save-btn') return;
+    const data = {
+      title: val('post-title'),
+      slug: val('post-slug'),
+      content: val('post-content'),
+      excerpt: val('post-excerpt'),
+      tag: val('post-tag'),
+      emoji: val('post-emoji') || '📝',
+      is_published: checked('post-publish'),
+      type: 'article',
+    };
+
+    if (!data.title || !data.slug) { status('post-status', '标题和 slug 必填', 'error'); return; }
+    status('post-status', '保存中…', 'pending');
+    try {
+      await pb.collection('posts').create(data);
+      await bustCache();
+      status('post-status', '已保存 ✓ 前端缓存已刷新', 'success');
+      ['post-title','post-slug','post-content','post-excerpt','post-tag','post-emoji'].forEach(id => setVal(id, ''));
+      await loadPosts();
+    } catch (e) {
+      // 若是 type 字段不存在导致的失败，重试不带 type
+      if (isUnknownFieldError(e, 'type')) {
+        try {
+          const { type: _type, ...fallbackData } = data;
+          await pb.collection('posts').create(fallbackData);
+          await bustCache();
+          status('post-status', '已保存 ✓（PB schema 暂无 type 字段）', 'success');
+          await loadPosts();
+          return;
+        } catch (e2) {
+          status('post-status', '保存失败：' + errorMessage(e2), 'error');
+          return;
+        }
+      }
+      status('post-status', '保存失败：' + errorMessage(e), 'error');
+    }
+  });
+
+  registerConsoleLoader('posts', loadPosts);
+</script>

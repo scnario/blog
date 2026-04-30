@@ -1,12 +1,12 @@
 ---
 /**
- * 笔记详情 — 短卡风格，不强制 TOC
- * 笔记的"正文"主要在 excerpt，但若 PB 里 content 有内容也一并渲染。
+ * 笔记详情 — 主题感知的短卡
+ *
+ * 走 Layout 注入的 --note-* / --surface-* / --font-* 变量，自动适配 5 套主题。
  */
 import Layout from '../../layouts/Layout.astro';
 import { getNoteBySlug } from '../../lib/queries';
 import { marked } from 'marked';
-import pb from '../../lib/pb';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/notes');
@@ -14,14 +14,7 @@ if (!slug) return Astro.redirect('/notes');
 const note = await getNoteBySlug(slug);
 if (!note) return Astro.redirect('/notes');
 
-// 笔记可能没有 content 字段，只有 excerpt；但若有 content 优先渲染
-let rawContent = '';
-try {
-  const r = await pb.collection('posts').getOne(note.id);
-  rawContent = (r as any).content || '';
-} catch {}
-
-const html = rawContent ? marked.parse(rawContent) : `<p>${note.excerpt}</p>`;
+const html = note.content ? marked.parse(note.content) : `<p>${note.excerpt}</p>`;
 
 function fmtDate(s: string): string {
   if (!s) return '';
@@ -30,76 +23,195 @@ function fmtDate(s: string): string {
 }
 ---
 
-<Layout title={`${note.title} · 笔记`} showSidebar={true} showToc={false}>
-  <div style="margin-bottom: 16px;">
-    <a href="/notes" style="font-family: 'JetBrains Mono', monospace; color: #6B5BFF; text-decoration: none; font-size: 13px;">
-      &lt; 返回笔记列表
-    </a>
-  </div>
+<Layout title={`${note.title} · 笔记`} description={note.excerpt} showSidebar={true} showToc={false}>
+  <a href="/notes" class="back mono">&lt; 返回笔记列表</a>
 
-  <article class="note-card">
-    <div class="note-meta">
+  <article class="note">
+    <header class="note-head">
       <span class="emoji">{note.emoji}</span>
-      <span class="tag">{note.tag}</span>
-      <span class="date mono">{fmtDate(note.created)}</span>
+      <div class="head-text">
+        <div class="head-meta">
+          <span class="tag">{note.tag}</span>
+          <span class="date mono">{fmtDate(note.created)}</span>
+        </div>
+        <h1 class="title">{note.title}</h1>
+      </div>
+    </header>
+
+    <div class="note-body">
+      <div class="body" set:html={html} />
     </div>
-    <h1 class="note-title">{note.title}</h1>
-    <div class="note-body" set:html={html} />
   </article>
 
   <style>
-    .note-card {
-      padding: 32px;
-      border-radius: 24px;
-      background: linear-gradient(135deg, #FFF9F0 0%, #FFE9C8 100%);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--surface-link);
+      text-decoration: none;
+      font-size: 13px;
     }
-    .note-meta {
+    .mono { font-family: var(--font-mono); }
+
+    /* --- 笔记外卡 --- */
+    .note {
+      border-radius: 22px;
+      background: var(--note-bg);
+      border: 1px solid var(--note-border);
+      color: var(--note-fg);
+      box-shadow: var(--note-shadow);
+      overflow: hidden;
+    }
+
+    /* --- 头部分区（带顶部彩条 + 微暗底） --- */
+    .note-head {
+      position: relative;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--note-border);
+      background: color-mix(in oklab, var(--note-tag-fg) 5%, transparent);
+    }
+    .note-head::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: linear-gradient(
+        90deg,
+        var(--note-tag-fg),
+        color-mix(in oklab, var(--note-tag-fg) 30%, transparent)
+      );
+    }
+    .emoji {
+      font-size: 36px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .head-text { flex: 1; min-width: 0; }
+    .head-meta {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       font-size: 13px;
-      color: #52525B;
+      color: var(--note-muted);
     }
-    .note-meta .emoji { font-size: 28px; }
-    .note-meta .tag {
+    .tag {
       padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.6);
-      font-weight: 600;
-      color: #6B5BFF;
+      background: var(--note-tag-bg);
+      color: var(--note-tag-fg);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
     }
-    .note-meta .date { color: #8A8A94; font-size: 11px; }
-    .note-title {
-      font-size: 24px;
+    .date { color: var(--note-muted); font-size: 11px; margin-left: auto; }
+
+    .title {
+      font-family: var(--font-display);
+      font-size: clamp(20px, 3vw, 28px);
       font-weight: 800;
       letter-spacing: -0.02em;
       line-height: 1.3;
-      margin: 0 0 16px;
+      margin: 0;
+      color: var(--note-fg);
     }
+
+    /* --- 正文分区 --- */
     .note-body {
-      font-size: 15px;
-      line-height: 1.75;
-      color: #1A1A1F;
+      padding: 24px 32px 32px;
     }
-    .note-body p { margin: 12px 0; }
-    .note-body code {
-      background: rgba(0,0,0,0.06);
+    .body {
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--note-fg);
+    }
+    .body :global(p) { margin: 12px 0; }
+    .body :global(h2),
+    .body :global(h3) {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--note-fg);
+      margin: 24px 0 10px;
+      line-height: 1.3;
+    }
+    .body :global(h2) { font-size: 1.25em; }
+    .body :global(h3) { font-size: 1.1em; }
+
+    .body :global(ul),
+    .body :global(ol) {
+      margin: 12px 0;
+      padding-left: 24px;
+    }
+    .body :global(li) { margin: 4px 0; }
+    .body :global(li::marker) { color: var(--note-muted); }
+
+    .body :global(code) {
+      font-family: var(--font-mono);
+      background: color-mix(in oklab, var(--note-fg) 10%, transparent);
+      color: var(--note-fg);
       padding: 2px 6px;
       border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
       font-size: 0.9em;
     }
-    .note-body pre {
-      background: #1A1A1F;
-      color: #E5E7EB;
-      padding: 14px;
+    .body :global(pre) {
+      background: var(--prose-pre-bg);
+      color: var(--prose-pre-fg);
+      padding: 14px 16px;
       border-radius: 10px;
       overflow-x: auto;
+      border: 1px solid var(--note-border);
+      margin: 16px 0;
     }
-    .note-body pre code { background: transparent; padding: 0; }
-    .note-body a { color: #6B5BFF; text-decoration: underline; }
-    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .body :global(pre code) {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+      font-size: 13.5px;
+    }
+    .body :global(a) {
+      color: var(--surface-link);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .body :global(strong) { color: var(--note-fg); font-weight: 700; }
+    .body :global(blockquote) {
+      border-left: 3px solid var(--note-tag-fg);
+      padding: 6px 14px;
+      margin: 14px 0;
+      color: var(--note-muted);
+      background: color-mix(in oklab, var(--note-tag-fg) 6%, transparent);
+      border-radius: 0 8px 8px 0;
+    }
+    .body :global(hr) {
+      border: none;
+      border-top: 1px dashed var(--note-border);
+      margin: 24px 0;
+    }
+
+    /* magazine — 粗黑边，去圆角 */
+    html[data-theme="magazine"] .note { border-radius: 0; }
+    html[data-theme="magazine"] .note-head::before { background: #0A0A0A; height: 6px; }
+    html[data-theme="magazine"] .title {
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    html[data-theme="magazine"] .body :global(pre),
+    html[data-theme="magazine"] .body :global(blockquote) { border-radius: 0; }
+
+    /* terminal — pre 发光感 */
+    html[data-theme="terminal"] .body :global(pre) {
+      box-shadow: inset 0 0 24px rgba(60, 255, 138, 0.05);
+    }
+
+    /* 移动端缩小内边距 */
+    @media (max-width: 720px) {
+      .note-head { padding: 22px 18px 16px; gap: 12px; }
+      .note-body { padding: 20px 18px 24px; }
+      .emoji { font-size: 28px; }
+    }
   </style>
 </Layout>

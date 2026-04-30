@@ -1,0 +1,156 @@
+---
+// 原型 — 便签卡片墙（移植自 D:\projects\webui\bento\ 笔记墙）
+// 独立于 Layout.astro，使用 mock 数据 + 旋转卡片 + 图钉 + 胶带
+// 目的：验证便签风格（手账拼贴感）在 Astro 中的视觉效果
+
+import '../../styles/sticky-notes.css';
+
+const notes = [
+  { id: 'n01', title: '信号 vs 观察者', body: 'Signal 是 pull-based 的 derived computation；Observer 是 push-based 的 effect。', tags: ['前端','响应式'], links: 2, date: '04.22' },
+  { id: 'n02', title: 'Push vs Pull 的代价', body: 'Push 系统的延迟低但难调试；Pull 系统的可预测性强但需要 dirty tracking。', tags: ['架构'], links: 3, date: '04.20' },
+  { id: 'n03', title: '卡片笔记不是把笔记写成卡片', body: 'Zettelkasten 的核心是 atomicity 和 linking。一张卡只讲一个点。', tags: ['方法'], links: 1, date: '04.18' },
+  { id: 'n04', title: '色彩感知与 OKLCH', body: 'OKLCH 比 HSL 更接近人眼。同一个 L 值，不同 H 的实际亮度感受接近。', tags: ['设计','色彩'], links: 2, date: '04.15' },
+  { id: 'n05', title: 'PocketBase 的 hooks 是宝藏', body: 'PB 的 onRecordBeforeCreateRequest hook 用 JS 写，可在入库前做任意校验。', tags: ['后端'], links: 1, date: '04.12' },
+  { id: 'n06', title: '为什么静态生成回潮了', body: 'JS 框架越做越复杂的反作用力。Astro 把 hydration 当成成本而非默认。', tags: ['前端'], links: 2, date: '04.10' },
+  { id: 'n07', title: 'Effect tracking 的盲区', body: 'useEffect 依赖数组只能 track 同步引用。Signal 系统不存在这个问题。', tags: ['前端'], links: 3, date: '04.08' },
+  { id: 'n08', title: '知识不是树是图', body: '目录结构会迫使你把一个想法塞进唯一的父节点。Tag + 双链才是图。', tags: ['方法'], links: 1, date: '04.05' },
+];
+
+const diaries = [
+  { date: '04.26', weekday: '周日', mood: '静', weather: '晴', title: '看完了一部慢电影', body: '下午把《长日将尽》看完了。Hopkins 演到最后一幕开车送 Miss Kenton 走那段——他什么都没说，但镜头停了七秒。', isPublic: true },
+  { date: '04.24', weekday: '周五', mood: '焦虑', weather: '雨', title: '项目卡住', body: 'PB 的 schema migration 又出问题了。我写了一个 dump-and-replay 的脚本，明天试。', isPublic: false },
+  { date: '04.21', weekday: '周二', mood: '平', weather: '多云', title: '和 J 在大学路喝咖啡', body: '她说她想转去做产品。聊到我自己 28 岁那年也焦虑过同样的事。', isPublic: true },
+  { date: '04.18', weekday: '周六', mood: '兴奋', weather: '晴', title: '写完了 Svelte 那篇', body: '改了七稿。Runes 这个东西比我想得复杂——但也比我想得优雅。', isPublic: true },
+];
+
+const tags = ['全部','#前端','#设计','#方法','#架构','#色彩'];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>便签卡片墙 · 数字花园</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet" />
+  </head>
+  <body style="margin:0; padding:0; background:#F8F4EC; color:#1A1814; font-family:'Inter',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; background-image: radial-gradient(circle at 1px 1px, rgba(26,24,20,0.05) 1px, transparent 0); background-size: 20px 20px;">
+    
+    <!-- TopNav (便签风格) -->
+    <header style="display:flex; align-items:center; gap:24px; padding:18px 32px; background:#F8F4EC; border-bottom:2px solid #1A1814;">
+      <div style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;">
+        <span style="width:28px;height:28px;background:#1A1814;color:#F8F4EC;border-radius:8px;display:grid;place-items:center;font-family:'Noto Serif SC',serif;font-weight:900;font-size:16px;">📌</span>
+        <span>便签墙</span>
+      </div>
+      <nav style="display:flex;gap:4px;margin-left:12px;">
+        <a href="#" style="padding:7px 14px;border-radius:99px;text-decoration:none;color:#F8F4EC;background:#1A1814;font-size:13px;font-weight:600;">首页</a>
+        <a href="#" style="padding:7px 14px;border-radius:99px;text-decoration:none;color:#1A1814;font-size:13px;font-weight:600;">笔记</a>
+        <a href="#" style="padding:7px 14px;border-radius:99px;text-decoration:none;color:#1A1814;font-size:13px;font-weight:600;">日记</a>
+      </nav>
+    </header>
+
+    <!-- ===== 笔记墙 ===== -->
+    <div class="sn-page">
+      <div class="sn-page-hd">
+        <div>
+          <div class="sn-eyebrow" style="color:#B8311E;">PRIVATE · 仅你可见</div>
+          <h1 class="sn-page-h1">笔记 · 便签墙</h1>
+        </div>
+        <div class="sn-filter-pillrow">
+          {tags.map((f,i) => (
+            <button class={`sn-fpill${i===0?' active':''}`}>{f}</button>
+          ))}
+        </div>
+      </div>
+
+      <!-- Stats Strip -->
+      <div class="sn-stats-strip">
+        <div class="sn-stat-mini"><div class="sn-stat-l">卡片</div><div class="sn-stat-v" style="font-variant-numeric:tabular-nums;">{notes.length}</div></div>
+        <div class="sn-stat-mini" style="background:#FFE082;color:#5A3500;"><div class="sn-stat-l">链接</div><div class="sn-stat-v" style="font-variant-numeric:tabular-nums;">{notes.reduce((a,n) => a + n.links, 0)}</div></div>
+        <div class="sn-stat-mini" style="background:#A8E6CF;color:#064E3B;"><div class="sn-stat-l">聚类</div><div class="sn-stat-v" style="font-variant-numeric:tabular-nums;">11</div></div>
+        <div class="sn-stat-mini" style="background:#FFCCBC;color:#7C2D12;"><div class="sn-stat-l">本月新增</div><div class="sn-stat-v" style="font-variant-numeric:tabular-nums;">+12</div></div>
+        <div class="sn-stat-mini" style="background:#E0BBE4;color:#4C1D95;"><div class="sn-stat-l">孤儿卡</div><div class="sn-stat-v" style="font-variant-numeric:tabular-nums;">2</div></div>
+      </div>
+
+      <!-- 便签卡片墙 -->
+      <div class="sn-wall">
+        {notes.map((n, i) => {
+          const colors = ['mint','coral','lilac','cream','sky','peach'];
+          const c = colors[i % colors.length];
+          const rot = (i % 2 === 0 ? -1 : 1) * ((i * 7) % 3 + 0.4);
+          return (
+            <article class={`sn-card ${c}`} style={`transform:rotate(${rot}deg);`}>
+              <div class="sn-pin"/>
+              <div class="sn-card-h">
+                <span class="id">{n.id.toUpperCase()}</span>
+                <span class="d">{n.date}</span>
+              </div>
+              <h4>{n.title}</h4>
+              <p>{n.body}</p>
+              <div class="sn-card-foot">
+                <span class="tags">
+                  {n.tags.map(t => <span class="sn-tag">#{t}</span>)}
+                </span>
+                <span class="links">↗ {n.links}</span>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+
+    <!-- ===== 日记手账 ===== -->
+    <div class="sn-page" style="border-top:3px double #1A1814; margin-top:8px; padding-top:48px;">
+      <div class="sn-page-hd">
+        <div>
+          <div class="sn-eyebrow" style="color:#B8311E;">PRIVATE · 加密</div>
+          <h1 class="sn-page-h1">日记 · 手账</h1>
+        </div>
+        <div class="sn-filter-pillrow">
+          <button class="sn-fpill active">四月 · 8 篇</button>
+          <button class="sn-fpill">三月 · 14</button>
+          <button class="sn-fpill">二月 · 11</button>
+        </div>
+      </div>
+
+      <div class="sn-diary-grid">
+        {diaries.map((d, i) => {
+          const colors = ['mint','coral','lilac','cream','sky','peach','mint','coral'];
+          const c = colors[i % colors.length];
+          const rot = (i % 2 === 0 ? -1.5 : 1.2);
+          return (
+            <article class={`sn-diary-card ${c}`} style={`transform:rotate(${rot}deg);`}>
+              <div class="sn-tape"/>
+              <div class="sn-diary-cardh">
+                <div>
+                  <div class="sn-diary-d">{d.date}</div>
+                  <div class="sn-diary-w">{d.weekday}</div>
+                </div>
+                <div class="sn-diary-stickers">
+                  <span class="sn-emoji-w">{d.weather}</span>
+                  <span class="sn-emoji-m">{d.mood}</span>
+                  <span class={`sn-pubmark ${d.isPublic ? 'pub' : 'priv'}`}>{d.isPublic ? '公开' : '私'}</span>
+                </div>
+              </div>
+              <h3>{d.title}</h3>
+              <p>{d.body}</p>
+              <div class="sn-diary-foot">
+                <span>{d.body.length} 字</span>
+                {d.isPublic
+                  ? <button class="sn-mini-btn">↗ 已转博客</button>
+                  : <button class="sn-mini-btn primary">→ 转博客</button>}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+
+    <!-- 提示条 -->
+    <div style="margin:32px;padding:16px 20px;background:#FFF3CD;border:2px solid #F59E0B;border-radius:12px;font-size:13px;color:#78350F;box-shadow:3px 3px 0 #F59E0B;">
+      <strong>📌 便签卡片墙</strong> — 移植自 <code>D:\projects\webui\bento\</code> 笔记墙 + 日记手账。核心视觉：旋转卡片 + 图钉 + 胶带 + 6 色底色 + hover 归正放大。CSS 文件：<code>src/styles/sticky-notes.css</code>。下方日记区展示了手账拼贴风格。
+    </div>
+  </body>
+</html>

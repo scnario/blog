@@ -1,13 +1,16 @@
 ---
 // biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables: Astro frontmatter symbols are consumed by the template.
 /**
- * 博客列表页 — 分页 + tag 过滤
+ * 标签过滤页 — 按 tag 筛选文章
  */
 import Layout from '../../layouts/Layout.astro';
-import { getPaginatedArticles } from '../../lib/queries';
+import { getArticlesByTag } from '../../lib/queries';
+
+const { tag } = Astro.params;
+if (!tag) return Astro.redirect('/articles');
 
 const page = parseInt(Astro.url.searchParams.get('page') ?? '1') || 1;
-const { items: articles, page: currentPage, totalPages, totalItems } = await getPaginatedArticles(page);
+const { items: articles, page: currentPage, totalPages, totalItems } = await getArticlesByTag(tag, page);
 
 function fmtDate(s: string): string {
   if (!s) return '';
@@ -16,18 +19,19 @@ function fmtDate(s: string): string {
 }
 ---
 
-<Layout title="博客 | 数字花园" showSidebar={true} showToc={false}>
+<Layout title={`标签: ${tag} · 博客`} showSidebar={true} showToc={false}>
   <header class="page-head">
-    <div class="kicker mono">ARTICLES</div>
-    <h1>博客</h1>
-    <p class="muted">长篇技术与思考记录 · 共 {totalItems} 篇</p>
+    <div class="kicker mono">TAG</div>
+    <h1># {tag}</h1>
+    <p class="muted">共 {totalItems} 篇文章</p>
   </header>
+
+  <a href="/articles" class="back-link mono">&lt; 返回全部博客</a>
 
   {articles.length === 0 ? (
     <div class="empty">
-      <div class="empty-icon">📭</div>
-      <div class="empty-title">还没发表过文章</div>
-      <a href="/console" class="empty-link">→ 去控制台写一篇</a>
+      <div class="empty-icon">🏷️</div>
+      <div class="empty-title">这个标签下还没有文章</div>
     </div>
   ) : (
     <>
@@ -45,17 +49,13 @@ function fmtDate(s: string): string {
       {totalPages > 1 && (
         <nav class="pagination" aria-label="分页导航">
           {currentPage > 1 ? (
-            <a href={`/articles?page=${currentPage - 1}`} class="page-btn">← 上一页</a>
+            <a href={`/tags/${tag}?page=${currentPage - 1}`} class="page-btn">← 上一页</a>
           ) : (
             <span class="page-btn disabled">← 上一页</span>
           )}
-
-          <span class="page-info mono">
-            {currentPage} / {totalPages}
-          </span>
-
+          <span class="page-info mono">{currentPage} / {totalPages}</span>
           {currentPage < totalPages ? (
-            <a href={`/articles?page=${currentPage + 1}`} class="page-btn">下一页 →</a>
+            <a href={`/tags/${tag}?page=${currentPage + 1}`} class="page-btn">下一页 →</a>
           ) : (
             <span class="page-btn disabled">下一页 →</span>
           )}
@@ -65,13 +65,12 @@ function fmtDate(s: string): string {
   )}
 
   <style>
-    /* --- 标题区 --- */
-    .page-head { margin-bottom: 32px; }
+    .page-head { margin-bottom: 20px; }
     .kicker {
       font-size: 11px;
       color: var(--surface-faint);
       letter-spacing: 0.08em;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .page-head h1 {
       font-family: var(--font-display);
@@ -81,12 +80,20 @@ function fmtDate(s: string): string {
       margin: 0;
       color: var(--surface-fg);
     }
-    .muted { color: var(--surface-muted); margin: 8px 0 0; }
+    .muted { color: var(--surface-muted); margin: 6px 0 0; }
     .mono { font-family: var(--font-mono); }
 
-    /* --- 空态 --- */
+    .back-link {
+      display: inline-block;
+      margin-bottom: 24px;
+      color: var(--surface-link);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .back-link:hover { text-decoration: underline; }
+
     .empty {
-      padding: 56px 24px;
+      padding: 48px 24px;
       text-align: center;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -96,15 +103,7 @@ function fmtDate(s: string): string {
     }
     .empty-icon { font-size: 48px; margin-bottom: 12px; }
     .empty-title { font-size: 16px; color: var(--surface-muted); }
-    .empty-link {
-      display: inline-block;
-      margin-top: 16px;
-      color: var(--surface-link);
-      text-decoration: none;
-      font-weight: 600;
-    }
 
-    /* --- 文章卡片 --- */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -125,11 +124,6 @@ function fmtDate(s: string): string {
       transform: translate(2px, 2px);
       box-shadow: 2px 2px 0 var(--visual-ink, #1A1814);
     }
-    html[data-theme="bento-webui"] .card {
-      box-shadow: var(--visual-shadow, 4px 4px 0 #1A1814);
-      border-color: var(--visual-ink, #1A1814);
-    }
-
     .tag {
       display: inline-block;
       padding: 4px 10px;
@@ -165,7 +159,6 @@ function fmtDate(s: string): string {
       letter-spacing: 0.02em;
     }
 
-    /* --- 分页 --- */
     .pagination {
       display: flex;
       justify-content: center;
@@ -199,23 +192,15 @@ function fmtDate(s: string): string {
       color: var(--surface-muted);
     }
 
-    /* magazine 主题 — 去圆角 + 大写标题 */
+    html[data-theme="bento-webui"] .card {
+      box-shadow: var(--visual-shadow, 4px 4px 0 #1A1814);
+      border-color: var(--visual-ink, #1A1814);
+    }
     html[data-theme="magazine"] .card,
     html[data-theme="magazine"] .empty { border-radius: 0; }
-    html[data-theme="magazine"] .title {
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
-    }
+    html[data-theme="magazine"] .title { text-transform: uppercase; letter-spacing: 0.02em; }
     html[data-theme="magazine"] .tag { border-radius: 0; }
     html[data-theme="magazine"] .page-btn { border-radius: 0; }
-
-    /* terminal/aurora 主题 */
-    html[data-theme="terminal"] .card:hover {
-      box-shadow: 0 0 0 1px rgba(60, 255, 138, 0.4) inset, 0 0 24px rgba(60, 255, 138, 0.18);
-    }
-    html[data-theme="aurora"] .card:hover {
-      box-shadow: 0 16px 40px rgba(162, 89, 255, 0.35);
-    }
   </style>
 
   <script>

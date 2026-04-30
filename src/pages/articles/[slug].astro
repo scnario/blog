@@ -1,10 +1,11 @@
 ---
 /**
- * 博客详情页 — Markdown 渲染 + TOC 抽取
- * 移植自 src/pages/matrix/[slug].astro
+ * 博客详情页 — Markdown 渲染 + TOC 抽取 + 上下篇导航
+ *
+ * Prose 全部走 --prose-* 变量，5 套主题下都有正确对比度。
  */
 import Layout from '../../layouts/Layout.astro';
-import { getArticleBySlug } from '../../lib/queries';
+import { getArticleBySlug, getAdjacentArticles } from '../../lib/queries';
 import { marked } from 'marked';
 
 const { slug } = Astro.params;
@@ -13,54 +14,353 @@ if (!slug) return Astro.redirect('/articles');
 const article = await getArticleBySlug(slug);
 if (!article) return Astro.redirect('/articles');
 
+const { prev: prevArticle, next: nextArticle } = await getAdjacentArticles(slug);
+
 const extractedHeadings: Array<{ depth: number; slug: string; text: string }> = [];
 const renderer = new marked.Renderer();
 
 renderer.heading = function (textOrObj: any, level: any) {
   const actualText = typeof textOrObj === 'object' ? textOrObj.text : textOrObj;
   const actualLevel = typeof textOrObj === 'object' ? textOrObj.depth : level;
-  const anchor = actualText.toLowerCase()
+  const anchor = String(actualText).toLowerCase()
     .replace(/[\s_]+/g, '-')
     .replace(/[^\w\u4e00-\u9fa5-]/g, '');
   extractedHeadings.push({ depth: actualLevel, slug: anchor, text: actualText });
-  return `<h${actualLevel} id="${anchor}" class="scroll-mt-24" style="font-weight: 700; margin: 28px 0 12px;">${actualText}</h${actualLevel}>\n`;
+  return `<h${actualLevel} id="${anchor}" class="scroll-mt-24">${actualText}</h${actualLevel}>\n`;
 };
 
-marked.use({ renderer });
+renderer.image = function (href: string, title: string | null, text: string) {
+  return `<img src="${href}" alt="${text || ''}" loading="lazy" decoding="async"${title ? ` title="${title}"` : ''} />`;
+};
+
+marked.use({ renderer, gfm: true });
 
 const parsedContent = marked.parse(article.content);
-const mockFrontmatter = { title: article.title, date: article.created };
+
+function fmtDate(s: string): string {
+  if (!s) return '';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10);
+}
+
+function readingTime(text: string): string {
+  const words = text.trim().split(/\s+/).length;
+  const cjk = (text.match(/[\u4e00-\u9fa5\u3040-\u30ff]/g) || []).length;
+  // 中文 ~500字/min，英文 ~200词/min
+  const mins = Math.ceil(Math.max(cjk / 500, words / 200));
+  return `约 ${mins} 分钟`;
+}
 ---
 
-<Layout title={`${article.title} · 博客`} frontmatter={mockFrontmatter} headings={extractedHeadings} showToc={true}>
-  <div style="margin-bottom: 20px;">
-    <a href="/articles" style="font-family: 'JetBrains Mono', monospace; color: #6B5BFF; text-decoration: none; font-size: 13px;">
-      &lt; 返回博客列表
-    </a>
-  </div>
+<Layout title={`${article.title} · 博客`} description={article.excerpt} ogImage={`/og/${article.slug}.png`} headings={extractedHeadings} showToc={true}>
+  <a href="/articles" class="back mono">&lt; 返回博客列表</a>
 
-  <div class="article-body" set:html={parsedContent} />
+  <article class="article">
+    <header class="article-head">
+      {article.tag && (
+        <span class="tag">
+          {article.emoji ? `${article.emoji} ` : ''}{article.tag}
+        </span>
+      )}
+      <h1 class="title">{article.title}</h1>
+      <div class="meta mono">
+        <span>{fmtDate(article.created)}</span>
+        <span class="sep">·</span>
+        <span>{readingTime(article.content)}</span>
+      </div>
+    </header>
+
+    <div class="article-body">
+      <div class="prose" set:html={parsedContent} />
+    </div>
+  </article>
+
+  {(prevArticle || nextArticle) && (
+    <nav class="adjacent-nav">
+      {prevArticle ? (
+        <a href={`/articles/${prevArticle.slug}`} class="adjacent-link prev">
+          <span class="adjacent-label mono">← 上一篇</span>
+          <span class="adjacent-title">{prevArticle.title}</span>
+        </a>
+      ) : <span class="adjacent-spacer" />}
+      {nextArticle ? (
+        <a href={`/articles/${nextArticle.slug}`} class="adjacent-link next">
+          <span class="adjacent-label mono">下一篇 →</span>
+          <span class="adjacent-title">{nextArticle.title}</span>
+        </a>
+      ) : <span class="adjacent-spacer" />}
+    </nav>
+  )}
 
   <style>
-    .article-body {
-      max-width: 100%;
-      line-height: 1.75;
-      font-size: 16px;
-      color: #1A1A1F;
+    /* --- 返回链接 --- */
+    .back {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: var(--surface-link);
+      text-decoration: none;
+      font-size: 13px;
     }
-    .article-body p { margin: 16px 0; }
-    .article-body code { background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
-    .article-body pre { background: #1A1A1F; color: #E5E7EB; padding: 16px; border-radius: 12px; overflow-x: auto; }
-    .article-body pre code { background: transparent; padding: 0; }
-    .article-body a { color: #6B5BFF; text-decoration: underline; }
-    .article-body ul, .article-body ol { margin: 16px 0; padding-left: 28px; }
-    .article-body blockquote {
-      border-left: 4px solid #C5A3FF;
-      padding: 4px 16px;
-      margin: 16px 0;
-      color: #52525B;
-      background: rgba(197,163,255,0.06);
+    .back:hover { text-decoration: underline; }
+    .mono { font-family: var(--font-mono); }
+
+    /* --- 整篇外卡 --- */
+    .article {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      color: var(--card-fg);
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    /* --- 文章头分区（带顶部彩条） --- */
+    .article-head {
+      position: relative;
+      padding: 36px 36px 24px;
+      border-bottom: 1px solid var(--prose-hr);
+      background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--surface-link) 4%, transparent) 0%,
+        transparent 100%
+      );
+    }
+    .article-head::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: linear-gradient(
+        90deg,
+        var(--surface-link),
+        color-mix(in oklab, var(--surface-link) 30%, transparent)
+      );
+    }
+
+    /* --- 正文分区 --- */
+    .article-body {
+      padding: 28px 36px 40px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: var(--prose-tag-bg);
+      color: var(--prose-tag-fg);
+    }
+    .title {
+      font-family: var(--font-display);
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      margin: 14px 0 10px;
+      color: var(--surface-fg);
+    }
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      font-size: 12px;
+      color: var(--surface-faint);
+      letter-spacing: 0.04em;
+    }
+    .sep { margin: 0 8px; opacity: 0.5; }
+
+    /* --- prose 主体 --- */
+    .prose {
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.78;
+      color: var(--prose-fg);
+    }
+    .prose :global(p) { margin: 18px 0; }
+
+    .prose :global(h1),
+    .prose :global(h2),
+    .prose :global(h3),
+    .prose :global(h4) {
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--surface-fg);
+      margin: 36px 0 14px;
+      line-height: 1.3;
+    }
+    .prose :global(h1) { font-size: 1.7em; }
+    .prose :global(h2) {
+      font-size: 1.42em;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--prose-hr);
+    }
+    .prose :global(h3) { font-size: 1.2em; }
+    .prose :global(h4) { font-size: 1.05em; }
+
+    .prose :global(a) {
+      color: var(--prose-link);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+    }
+    .prose :global(a:hover) { text-decoration-thickness: 2px; }
+
+    .prose :global(strong) { color: var(--surface-fg); font-weight: 700; }
+    .prose :global(em) { color: var(--surface-fg); }
+
+    .prose :global(ul),
+    .prose :global(ol) {
+      margin: 18px 0;
+      padding-left: 28px;
+    }
+    .prose :global(li) { margin: 6px 0; }
+    .prose :global(li::marker) { color: var(--surface-faint); }
+
+    /* 内联 code */
+    .prose :global(code) {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      background: var(--prose-code-bg);
+      color: var(--prose-code-fg);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+
+    /* 代码块 */
+    .prose :global(pre) {
+      background: var(--prose-pre-bg);
+      color: var(--prose-pre-fg);
+      padding: 16px 18px;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 22px 0;
+      border: 1px solid var(--card-border);
+    }
+    .prose :global(pre code) {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    /* 引用 */
+    .prose :global(blockquote) {
+      border-left: 4px solid var(--prose-quote-border);
+      padding: 8px 18px;
+      margin: 22px 0;
+      color: var(--prose-quote-fg);
+      background: var(--prose-quote-bg);
       border-radius: 0 8px 8px 0;
+    }
+    .prose :global(blockquote p) { margin: 6px 0; }
+
+    /* 分隔线 */
+    .prose :global(hr) {
+      border: none;
+      border-top: 1px solid var(--prose-hr);
+      margin: 36px 0;
+    }
+
+    /* 表格 */
+    .prose :global(table) {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 22px 0;
+      font-size: 14px;
+    }
+    .prose :global(th),
+    .prose :global(td) {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--prose-hr);
+      text-align: left;
+    }
+    .prose :global(th) {
+      font-weight: 700;
+      color: var(--surface-fg);
+      background: var(--prose-code-bg);
+    }
+
+    /* 图片 */
+    .prose :global(img) {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      margin: 22px 0;
+      border: 1px solid var(--card-border);
+    }
+
+    /* magazine 主题 — 衬线大标题 + 去圆角 */
+    html[data-theme="magazine"] .article,
+    html[data-theme="magazine"] .tag { border-radius: 0; }
+    html[data-theme="magazine"] .title { text-transform: uppercase; letter-spacing: 0.01em; }
+    html[data-theme="magazine"] .article-head::before { background: #0A0A0A; height: 6px; }
+    html[data-theme="magazine"] .prose :global(pre),
+    html[data-theme="magazine"] .prose :global(img),
+    html[data-theme="magazine"] .prose :global(blockquote) { border-radius: 0; }
+    html[data-theme="magazine"] .prose :global(blockquote) {
+      border: 2px solid #0A0A0A;
+      border-left-width: 6px;
+    }
+
+    /* 移动端缩小内边距 */
+    @media (max-width: 720px) {
+      .article-head { padding: 24px 20px 18px; }
+      .article-body { padding: 22px 20px 28px; }
+    }
+
+    /* paper 主题 — 段首缩进感（首段不缩进）*/
+    html[data-theme="paper"] .prose :global(p + p) { text-indent: 1.6em; }
+
+    /* terminal 主题 — pre 加发光感 */
+    html[data-theme="terminal"] .prose :global(pre) {
+      border: 1px solid rgba(60, 255, 138, 0.25);
+      box-shadow: inset 0 0 24px rgba(60, 255, 138, 0.05);
+    }
+
+    /* --- 上下篇导航 --- */
+    .adjacent-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 32px;
+    }
+    .adjacent-link {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--card-fg);
+      box-shadow: var(--card-shadow);
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms;
+    }
+    .adjacent-link:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--note-shadow-hover);
+    }
+    .adjacent-link.next { text-align: right; align-items: flex-end; }
+    .adjacent-label {
+      font-size: 11px;
+      color: var(--surface-link);
+      letter-spacing: 0.04em;
+    }
+    .adjacent-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--surface-fg);
+    }
+    .adjacent-spacer { display: none; }
+    @media (max-width: 640px) {
+      .adjacent-nav { grid-template-columns: 1fr; }
     }
   </style>
 </Layout>

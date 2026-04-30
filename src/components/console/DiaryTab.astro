@@ -1,0 +1,137 @@
+<div class="tab-panel" data-panel="diary">
+  <div class="panel-head">
+    <h2>日记</h2>
+    <p class="muted">独立 <code>diaries</code> 表。默认 <strong>私密</strong>，主动勾选「公开」才上墙。</p>
+  </div>
+
+  <div class="card warm">
+    <h3>新建日记</h3>
+    <div class="form-grid">
+      <label class="span-2">标题
+        <input type="text" id="diary-title" placeholder="今天的小标题…" />
+      </label>
+      <label>Slug
+        <input type="text" id="diary-slug" placeholder="2026-04-25-evening" />
+      </label>
+      <label>日期
+        <input type="date" id="diary-date" />
+      </label>
+      <label>心情
+        <select id="diary-mood">
+          <option value="平静">😌 平静</option>
+          <option value="兴奋">🤩 兴奋</option>
+          <option value="低落">😔 低落</option>
+          <option value="专注">🧐 专注</option>
+        </select>
+      </label>
+      <label>天气
+        <input type="text" id="diary-weather" placeholder="晴 / 多云 / 雨…" />
+      </label>
+      <label class="span-2">正文
+        <textarea id="diary-content" rows="10" placeholder="写点什么…"></textarea>
+      </label>
+      <label class="checkbox span-2 highlight-private">
+        <input type="checkbox" id="diary-public" />
+        <span>🔓 公开（默认私密）— 勾选后才会出现在 <code>/diary</code></span>
+      </label>
+    </div>
+    <div class="row">
+      <button id="diary-save-btn" class="btn-primary">保存</button>
+      <span id="diary-status" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>已有日记 <button id="diary-refresh-btn" class="btn-ghost small">刷新</button></h3>
+    <div id="diary-list" class="list">
+      <div class="muted small">登录后自动加载…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { $, bustCache, checked, errorMessage, escapeHtml, pb, registerConsoleLoader, setChecked, setVal, status, updateSidecar, val } from '../../lib/console-client';
+
+  type DiaryRecord = { id: string; title?: string; date?: string; created?: string; is_public?: boolean };
+
+  async function loadDiaries() {
+    const list = $('diary-list');
+    if (!list) return;
+    list.innerHTML = '<div class="muted small">加载中…</div>';
+    try {
+      const result = await pb.collection('diaries').getList(1, 50, { sort: '-date' });
+      const items = result.items as DiaryRecord[];
+      if (!items.length) {
+        list.innerHTML = '<div class="muted small">暂无日记。</div>';
+        updateSidecar({ diaries: 0 });
+        return;
+      }
+      updateSidecar({ diaries: items.length });
+      list.innerHTML = '';
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const pubBadge = it.is_public
+          ? '<span class="badge public">公开</span>'
+          : '<span class="badge private">🔒 私密</span>';
+        row.innerHTML = `
+          ${pubBadge}
+          <div class="title">${escapeHtml(it.title || '(untitled)')}</div>
+          <div class="muted small mono">${(it.date || it.created || '').slice(0, 10)}</div>
+          <div class="actions">
+            <button data-act="toggle-public" data-id="${it.id}" data-pub="${!!it.is_public}">
+              ${it.is_public ? '改为私密' : '公开'}
+            </button>
+            <button data-act="del-diary" data-id="${it.id}" class="danger">删除</button>
+          </div>
+        `;
+        list.appendChild(row);
+      }
+      list.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => onDiaryAction(btn));
+      });
+    } catch (e) {
+      list.innerHTML = `<div class="muted small">加载失败（diaries 表可能还未创建）：${escapeHtml(errorMessage(e))}</div>`;
+    }
+  }
+
+  async function onDiaryAction(btn: HTMLButtonElement) {
+    const id = btn.dataset.id!;
+    const act = btn.dataset.act!;
+    if (act === 'del-diary') {
+      if (!confirm('确定删除这条日记？')) return;
+      try { await pb.collection('diaries').delete(id); await bustCache(); await loadDiaries(); }
+      catch (e) { alert('删除失败：' + errorMessage(e)); }
+    } else if (act === 'toggle-public') {
+      const wasPub = btn.dataset.pub === 'true';
+      try { await pb.collection('diaries').update(id, { is_public: !wasPub }); await bustCache(); await loadDiaries(); }
+      catch (e) { alert('更新失败：' + errorMessage(e)); }
+    }
+  }
+  $('diary-refresh-btn')?.addEventListener('click', () => loadDiaries());
+  $('diary-save-btn')?.addEventListener('click', async () => {
+    const data = {
+      title: val('diary-title'),
+      slug: val('diary-slug'),
+      content: val('diary-content'),
+      mood: val('diary-mood'),
+      weather: val('diary-weather'),
+      date: val('diary-date') || new Date().toISOString().slice(0, 10),
+      is_public: checked('diary-public'),
+    };
+    if (!data.title || !data.slug) { status('diary-status', '标题和 slug 必填', 'error'); return; }
+    status('diary-status', '保存中…', 'pending');
+    try {
+      await pb.collection('diaries').create(data);
+      await bustCache();
+      status('diary-status', '已保存 ✓ ' + (data.is_public ? '已公开' : '🔒 私密'), 'success');
+      ['diary-title','diary-slug','diary-content','diary-weather'].forEach(id => setVal(id, ''));
+      setChecked('diary-public', false);
+      await loadDiaries();
+    } catch (e) {
+      status('diary-status', '保存失败（diaries 表可能尚未创建）：' + errorMessage(e), 'error');
+    }
+  });
+
+  registerConsoleLoader('diary', loadDiaries);
+</script>

@@ -1,0 +1,73 @@
+---
+import { listPresets } from '../../lib/bento-presets';
+
+const presets = listPresets();
+---
+
+<div class="tab-panel" data-panel="layout">
+  <div class="panel-head">
+    <h2>Bento 布局</h2>
+    <p class="muted">从预设里选；具体瓷砖顺序见 <code>src/lib/bento-presets.ts</code>。</p>
+  </div>
+
+  <div class="card">
+    <h3>选择预设</h3>
+    <div class="preset-grid">
+      {presets.map(p => (
+        <label class="preset-card">
+          <input type="radio" name="bento-preset" value={p.id} />
+          <div>
+            <div class="preset-name">{p.name}</div>
+            <div class="muted small">{p.tagline}</div>
+            <div class="mono small" style="margin-top:8px;color:#8A8A94">
+              {p.tiles.map(t => t.id).join(' › ')}
+            </div>
+          </div>
+        </label>
+      ))}
+    </div>
+    <div class="row">
+      <button id="layout-save-btn" class="btn-primary">保存布局</button>
+      <span id="layout-status" class="muted"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { $, bustCache, errorMessage, getCurrentSettingsId, isUnknownFieldError, pb, setCurrentSettingsId, status } from '../../lib/console-client';
+
+  $('layout-save-btn')?.addEventListener('click', async () => {
+    const radio = document.querySelector<HTMLInputElement>('input[name="bento-preset"]:checked');
+    if (!radio) { status('layout-status', '请选择布局', 'error'); return; }
+    status('layout-status', '保存中…', 'pending');
+    try {
+      const data = { bento_layout: { preset: radio.value }, bento_layout_preset: radio.value };
+      const currentSettingsId = getCurrentSettingsId();
+      if (currentSettingsId) {
+        await pb.collection('settings').update(currentSettingsId, data);
+      } else {
+        const r = await pb.collection('settings').create(data);
+        setCurrentSettingsId(r.id);
+      }
+      await bustCache();
+      status('layout-status', '已保存 ✓ 回首页查看新布局', 'success');
+    } catch (e) {
+      // 若 bento_layout 字段不存在，退化为 bento_layout_preset
+      if (isUnknownFieldError(e, 'bento_layout')) {
+        try {
+          const currentSettingsId = getCurrentSettingsId();
+          if (currentSettingsId) {
+            await pb.collection('settings').update(currentSettingsId, { bento_layout_preset: radio.value });
+            await bustCache();
+            status('layout-status', '已保存 ✓（仅写入 bento_layout_preset）', 'success');
+            return;
+          }
+        } catch (e2) {
+          status('layout-status', '保存失败：' + errorMessage(e2), 'error');
+          return;
+        }
+      }
+      status('layout-status', '保存失败：' + errorMessage(e), 'error');
+    }
+  });
+</script>

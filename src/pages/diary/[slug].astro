@@ -1,7 +1,11 @@
 ---
 /**
  * 日记详情 — 仅渲染 is_public=true 的条目
- * accent 换奶油黄系
+ *
+ * 配色策略：
+ * - bento / paper / magazine 等浅色主题 → 保留奶油黄 accent（暖意）
+ * - terminal / aurora 深色主题 → 切到 --note-* 系列，避免奶油底刺眼
+ * 通过 var(--diary-bg) 等"主题局部别名"做切换，主体规则保持简洁。
  */
 import Layout from '../../layouts/Layout.astro';
 import { getDiaryBySlug } from '../../lib/queries';
@@ -29,72 +33,247 @@ const moodEmoji: Record<string, string> = {
 };
 ---
 
-<Layout title={`${diary.title} · 日记`} showSidebar={true} showToc={false}>
-  <div style="margin-bottom: 16px;">
-    <a href="/diary" style="font-family: 'JetBrains Mono', monospace; color: #B7791F; text-decoration: none; font-size: 13px;">
-      &lt; 返回日记时间线
-    </a>
-  </div>
+<Layout title={`${diary.title} · 日记`} description={diary.content.slice(0, 160).replace(/[#*`>\-]/g, '')} showSidebar={true} showToc={false}>
+  <a href="/diary" class="back mono">&lt; 返回日记时间线</a>
 
-  <article class="diary-card">
-    <div class="diary-meta">
-      <span class="mood">{moodEmoji[diary.mood] || '🌱'} {diary.mood}</span>
-      {diary.weather && <span class="weather">· {diary.weather}</span>}
-      <span class="date mono">{fmtDate(diary.date || diary.created)}</span>
+  <article class="diary">
+    <header class="diary-head">
+      <div class="head-row">
+        <span class="mood">{moodEmoji[diary.mood] || '🌱'} {diary.mood}</span>
+        {diary.weather && <span class="weather">· {diary.weather}</span>}
+        <span class="date mono">{fmtDate(diary.date || diary.created)}</span>
+      </div>
+      <h1 class="title">{diary.title}</h1>
+    </header>
+
+    <div class="diary-body">
+      <div class="body" set:html={html} />
     </div>
-    <h1 class="diary-title">{diary.title}</h1>
-    <div class="diary-body" set:html={html} />
   </article>
 
   <style>
-    .diary-card {
-      padding: 36px;
-      border-radius: 24px;
-      background: linear-gradient(135deg, #FFFCEB 0%, #FFE082 100%);
-      box-shadow: 0 8px 24px rgba(255, 196, 0, 0.12);
-      border: 1px solid rgba(255, 224, 130, 0.4);
+    /* ---------- 主题局部别名 ---------- */
+    /* 默认（bento / paper）：奶油底 + 黄棕 accent */
+    .diary {
+      --diary-bg: linear-gradient(135deg, #FFFCEB 0%, #FFE082 100%);
+      --diary-fg: #1A1A1F;
+      --diary-muted: #52525B;
+      --diary-faint: #8A8A94;
+      --diary-accent: #B7791F;
+      --diary-border: rgba(255, 184, 0, 0.32);
+      --diary-shadow: 0 8px 24px rgba(255, 196, 0, 0.12);
+      --diary-quote-bg: rgba(255, 179, 71, 0.10);
+      --diary-quote-border: #FFB347;
+      --diary-pre-bg: #2A2520;
+      --diary-pre-fg: #F4E9CC;
     }
-    .diary-meta {
+    /* magazine 主题 — 报纸感：纯白 + 朱红 + 黑边 */
+    html[data-theme="magazine"] .diary {
+      --diary-bg: #FFFFFF;
+      --diary-fg: #0A0A0A;
+      --diary-muted: #4A4A4A;
+      --diary-faint: #6B6B6B;
+      --diary-accent: #C8102E;
+      --diary-border: #0A0A0A;
+      --diary-shadow: 0 0 0 2px #0A0A0A;
+      --diary-quote-bg: #F5F5F0;
+      --diary-quote-border: #C8102E;
+      --diary-pre-bg: #0A0A0A;
+      --diary-pre-fg: #F5F5F0;
+    }
+    /* terminal 主题 — 深底 + 荧光绿 */
+    html[data-theme="terminal"] .diary {
+      --diary-bg: rgba(60, 255, 138, 0.04);
+      --diary-fg: #D6FFD6;
+      --diary-muted: #7FBA82;
+      --diary-faint: #5C8E6F;
+      --diary-accent: #3DFF8A;
+      --diary-border: rgba(60, 255, 138, 0.28);
+      --diary-shadow: 0 0 0 1px rgba(60, 255, 138, 0.15) inset;
+      --diary-quote-bg: rgba(60, 255, 138, 0.08);
+      --diary-quote-border: #3DFF8A;
+      --diary-pre-bg: rgba(0, 0, 0, 0.5);
+      --diary-pre-fg: #D6FFD6;
+    }
+    /* aurora 主题 — 紫罗兰 */
+    html[data-theme="aurora"] .diary {
+      --diary-bg: rgba(255, 255, 255, 0.06);
+      --diary-fg: #F1ECFF;
+      --diary-muted: #B6A8E6;
+      --diary-faint: #8A7FB6;
+      --diary-accent: #E2D1FF;
+      --diary-border: rgba(201, 166, 255, 0.25);
+      --diary-shadow: 0 8px 28px rgba(76, 29, 149, 0.25);
+      --diary-quote-bg: rgba(201, 166, 255, 0.10);
+      --diary-quote-border: #E2D1FF;
+      --diary-pre-bg: rgba(0, 0, 0, 0.4);
+      --diary-pre-fg: #F1ECFF;
+    }
+
+    /* ---------- 通用元素 ---------- */
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--surface-link);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .back:hover { text-decoration: underline; }
+    .mono { font-family: var(--font-mono); }
+
+    /* --- 日记外卡 --- */
+    .diary {
+      background: var(--diary-bg);
+      border: 1px solid var(--diary-border);
+      box-shadow: var(--diary-shadow);
+      color: var(--diary-fg);
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    /* --- 头部分区 --- */
+    .diary-head {
+      position: relative;
+      padding: 32px 36px 22px;
+      border-bottom: 1px solid var(--diary-border);
+    }
+    .diary-head::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: linear-gradient(
+        90deg,
+        var(--diary-accent),
+        color-mix(in oklab, var(--diary-accent) 25%, transparent)
+      );
+    }
+    .head-row {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       font-size: 13px;
-      color: #52525B;
+      color: var(--diary-muted);
     }
-    .mood { font-weight: 600; }
-    .weather { color: #8A8A94; }
-    .date { margin-left: auto; font-size: 11px; color: #8A8A94; }
-    .diary-title {
-      font-size: 28px;
+    .mood { font-weight: 700; color: var(--diary-fg); }
+    .weather { color: var(--diary-faint); }
+    .date {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--diary-faint);
+      letter-spacing: 0.04em;
+    }
+    .title {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3.5vw, 32px);
       font-weight: 800;
       letter-spacing: -0.02em;
       line-height: 1.3;
-      margin: 0 0 20px;
-      color: #2A2A2F;
+      margin: 0;
+      color: var(--diary-fg);
     }
-    .diary-body {
+
+    /* --- 正文分区 --- */
+    .diary-body { padding: 26px 36px 36px; }
+    .body {
+      font-family: var(--font-body);
       font-size: 16px;
       line-height: 1.85;
-      color: #1A1A1F;
+      color: var(--diary-fg);
     }
-    .diary-body p { margin: 14px 0; }
-    .diary-body code {
-      background: rgba(0,0,0,0.06);
+    .body :global(p) { margin: 14px 0; }
+
+    .body :global(h2),
+    .body :global(h3),
+    .body :global(h4) {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--diary-fg);
+      margin: 28px 0 12px;
+      line-height: 1.3;
+    }
+    .body :global(h2) {
+      font-size: 1.32em;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--diary-border);
+    }
+    .body :global(h3) { font-size: 1.15em; }
+    .body :global(h4) { font-size: 1.02em; }
+
+    .body :global(ul),
+    .body :global(ol) {
+      margin: 14px 0;
+      padding-left: 26px;
+    }
+    .body :global(li) { margin: 5px 0; }
+    .body :global(li::marker) { color: var(--diary-faint); }
+
+    .body :global(strong) { color: var(--diary-fg); font-weight: 700; }
+    .body :global(em) { color: var(--diary-fg); }
+    .body :global(a) {
+      color: var(--diary-accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .body :global(code) {
+      font-family: var(--font-mono);
+      background: color-mix(in oklab, var(--diary-fg) 10%, transparent);
+      color: var(--diary-fg);
       padding: 2px 6px;
       border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9em;
+      font-size: 0.88em;
     }
-    .diary-body blockquote {
-      border-left: 4px solid #FFB347;
-      padding: 4px 16px;
-      margin: 14px 0;
-      color: #52525B;
-      background: rgba(255,179,71,0.08);
+    .body :global(pre) {
+      background: var(--diary-pre-bg);
+      color: var(--diary-pre-fg);
+      padding: 14px 16px;
+      border-radius: 10px;
+      overflow-x: auto;
+      border: 1px solid var(--diary-border);
+      margin: 18px 0;
+      font-size: 13.5px;
+    }
+    .body :global(pre code) {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+    .body :global(blockquote) {
+      border-left: 4px solid var(--diary-quote-border);
+      padding: 6px 16px;
+      margin: 16px 0;
+      color: var(--diary-muted);
+      background: var(--diary-quote-bg);
       border-radius: 0 8px 8px 0;
     }
-    .diary-body a { color: #B7791F; text-decoration: underline; }
-    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .body :global(blockquote p) { margin: 6px 0; }
+    .body :global(hr) {
+      border: none;
+      border-top: 1px dashed var(--diary-border);
+      margin: 28px 0;
+    }
+    .body :global(img) {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      margin: 20px 0;
+      border: 1px solid var(--diary-border);
+    }
+
+    /* magazine — 去圆角 */
+    html[data-theme="magazine"] .diary { border-radius: 0; }
+    html[data-theme="magazine"] .diary-head::before { background: #0A0A0A; height: 6px; }
+    html[data-theme="magazine"] .title { text-transform: uppercase; letter-spacing: 0.01em; }
+    html[data-theme="magazine"] .body :global(pre),
+    html[data-theme="magazine"] .body :global(img),
+    html[data-theme="magazine"] .body :global(blockquote) { border-radius: 0; }
+
+    /* 移动端 */
+    @media (max-width: 720px) {
+      .diary-head { padding: 22px 20px 16px; }
+      .diary-body { padding: 22px 20px 28px; }
+    }
   </style>
 </Layout>

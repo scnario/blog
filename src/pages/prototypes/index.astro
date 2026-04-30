@@ -60,6 +60,26 @@ const styles = [
     not: '首页丰富感弱',
     weight: '中',
   },
+  {
+    slug: 'bento-webui',
+    name: 'Bento Maximalist Plus',
+    tagline: '多彩瓷砖 + 点阵纹理 + 硬投影（移植自 webui）',
+    bg: 'radial-gradient(circle at 1px 1px, rgba(26,24,20,0.08) 1px, transparent 0), linear-gradient(135deg, #A8E6CF 0%, #FFE082 50%, #FFCCBC 100%)',
+    fg: '#1A1814',
+    fit: '海报感首页、信息聚合、视觉冲击力',
+    not: '深色模式不适配、移动端 12 栅偏重',
+    weight: '低（CSS 已就绪）',
+  },
+  {
+    slug: 'sticky-notes',
+    name: 'Sticky Notes Wall',
+    tagline: '便签卡片墙 · 图钉 + 胶带 + 手账拼贴（移植自 webui）',
+    bg: 'radial-gradient(circle at 1px 1px, rgba(26,24,20,0.05) 1px, transparent 0), linear-gradient(135deg, #FFE082 0%, #FFCCBC 50%, #E0BBE4 100%)',
+    fg: '#1A1814',
+    fit: '笔记墙、日记手账、灵感碎片收集',
+    not: '正文长文排版需额外适配',
+    weight: '低（CSS 已就绪）',
+  },
 ];
 ---
 
@@ -179,7 +199,7 @@ const styles = [
           <li><strong>Bento 增强版</strong>（<code>/prototypes/bento</code>）已加入：标题逐字入场 / 卡片 3D 倾斜跟手 / 数字滚动 / 磁吸按钮 / 粒子点击 / Konami 彩蛋（<span class="mono">↑↑↓↓←→←→BA</span>）</li>
           <li><strong>Bento Classic</strong>（<code>/prototypes/bento-classic</code>）保留为基线副本，方便随时回退或对比</li>
           <li>右下角浮动的 <strong>🎨 主题切换器</strong> 已通就在所有原型页之间快速切换；点击选项会写 <code>site_theme</code> cookie，未来真正整合后服务端就靠它选主题</li>
-          <li>架构：<code>src/lib/theme.ts</code> 是单一真相源，<code>ThemeSwitcher.astro</code> 读它渲染面板，每个主题声明它支持哪些 route 类型（home/post/diary/tool）；不支持时自动回落 bento</li>
+          <li>架构：<code>src/lib/theme.ts</code> 是单一真相源，每个主题声明它支持哪些 route 类型（home/post/diary/tool）；不支持时自动回落 bento。生产端的主题切换已统一收到 <code>/console</code> 的「主题」tab。</li>
           <li>下一步：进入 <code>P-Theme</code> 阶段把每个 prototype 拆成 <code>{'src/themes/<slug>/{home,post,diary}.astro'}</code>，让生产路由按 cookie 选主题渲染</li>
         </ul>
       </div>

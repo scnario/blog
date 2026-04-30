@@ -3,17 +3,19 @@ import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 
 export default defineConfig({
-  // 必须显式声明为服务端渲染
-  output: 'server', 
-  
-  vite: {
-    plugins: [
-      tailwindcss(),
-      // 那个 hifi-backend 插件已经被移除了，我们要走正规军路线
-    ]
+  output: 'server',
+
+  // 旧 .md 路由 → 新 /articles/<slug> 301 重定向
+  // 迁移完成后删除 src/pages/*.md，这里保留即可
+  redirects: {
+    '/create_blog': '/articles/webhook-auto-deploy',
+    '/vaultwarden': '/articles/vaultwarden-deploy',
+    '/xmod':        '/articles/xanmod-bbrv3',
   },
 
-  adapter: node({
-    mode: 'standalone'
-  })
+  vite: {
+    plugins: [tailwindcss()]
+  },
+
+  adapter: node({ mode: 'standalone' })
 });

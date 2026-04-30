@@ -1,0 +1,144 @@
+<div class="tab-panel" data-panel="notes">
+  <div class="panel-head">
+    <h2>笔记</h2>
+    <p class="muted">短小灵感与片段，写入 <code>posts</code> 表 <code>type='note'</code>。<strong>正文放摘要里就行</strong>，笔记越短越好。</p>
+  </div>
+
+  <div class="card note-card">
+    <h3>新建笔记</h3>
+    <div class="form-grid">
+      <label class="span-2">标题
+        <input type="text" id="note-title" placeholder="一句话标题…" />
+      </label>
+      <label>Slug
+        <input type="text" id="note-slug" placeholder="quick-thought-2026" />
+      </label>
+      <label>标签
+        <input type="text" id="note-tag" placeholder="灵感 / 片段 / 工具…" />
+      </label>
+      <label>Emoji
+        <input type="text" id="note-emoji" placeholder="💡" maxlength="4" />
+      </label>
+      <label class="span-2">正文（笔记内容，建议 1–3 句）
+        <textarea id="note-excerpt" rows="3" placeholder="想到啥写啥…" required></textarea>
+      </label>
+      <label class="span-2">扩展 Markdown（可选 — 想多写两段时用）
+        <textarea id="note-content" rows="6" placeholder="留空也行；填了会在 /notes/[slug] 详情页渲染"></textarea>
+      </label>
+      <label class="checkbox span-2">
+        <input type="checkbox" id="note-publish" checked />
+        <span>立即发布</span>
+      </label>
+    </div>
+    <div class="row">
+      <button id="note-save-btn" class="btn-primary">保存笔记</button>
+      <span id="note-status" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>已有笔记 <button id="note-refresh-btn" class="btn-ghost small">刷新</button></h3>
+    <div id="note-list" class="list">
+      <div class="muted small">登录后自动加载…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { $, bustCache, checked, errorMessage, escapeHtml, fetchPostsByType, isUnknownFieldError, pb, registerConsoleLoader, setChecked, setVal, status, updateSidecar, val } from '../../lib/console-client';
+
+  type NoteRecord = { id: string; title?: string; excerpt?: string; emoji?: string; is_published?: boolean };
+
+  async function loadNotes() {
+    const list = $('note-list');
+    if (!list) return;
+    list.innerHTML = '<div class="muted small">加载中…</div>';
+    try {
+      const result = await fetchPostsByType('note');
+      const items = result.items as NoteRecord[];
+      if (!items.length) {
+        list.innerHTML = '<div class="muted small">还没有笔记。在上面写一条试试。</div>';
+        updateSidecar({ notes: 0 });
+        return;
+      }
+      updateSidecar({ notes: items.length });
+      list.innerHTML = '';
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const pubBadge = it.is_published
+          ? '<span class="badge public">已发布</span>'
+          : '<span class="badge private">草稿</span>';
+        const emoji = it.emoji || '💡';
+        const excerpt = (it.excerpt || '').slice(0, 60);
+        row.innerHTML = `
+          <span class="badge note">${emoji} 笔记</span>${pubBadge}
+          <div class="title">${escapeHtml(it.title || '(untitled)')}</div>
+          <div class="muted small">${escapeHtml(excerpt)}${excerpt.length >= 60 ? '…' : ''}</div>
+          <div class="actions">
+            <button data-act="toggle-note" data-id="${it.id}" data-pub="${!!it.is_published}">
+              ${it.is_published ? '下架' : '发布'}
+            </button>
+            <button data-act="del-note" data-id="${it.id}" class="danger">删除</button>
+          </div>
+        `;
+        list.appendChild(row);
+      }
+      list.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach(btn => {
+        btn.addEventListener('click', () => onNoteAction(btn));
+      });
+    } catch (e) {
+      list.innerHTML = `<div class="error">加载失败：${escapeHtml(errorMessage(e))}</div>`;
+    }
+  }
+
+  async function onNoteAction(btn: HTMLButtonElement) {
+    const id = btn.dataset.id!;
+    const act = btn.dataset.act!;
+    if (act === 'del-note') {
+      if (!confirm('确定删除这条笔记？')) return;
+      try { await pb.collection('posts').delete(id); await bustCache(); await loadNotes(); }
+      catch (e) { alert('删除失败：' + errorMessage(e)); }
+    } else if (act === 'toggle-note') {
+      const wasPub = btn.dataset.pub === 'true';
+      try { await pb.collection('posts').update(id, { is_published: !wasPub }); await bustCache(); await loadNotes(); }
+      catch (e) { alert('更新失败：' + errorMessage(e)); }
+    }
+  }
+
+  $('note-refresh-btn')?.addEventListener('click', () => loadNotes());
+  $('note-save-btn')?.addEventListener('click', async () => {
+    const title = val('note-title');
+    const slug = val('note-slug') || (title ? title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\u4e00-\u9fa5\-]/g, '') + '-' + Date.now().toString(36) : '');
+    const data = {
+      title,
+      slug,
+      excerpt: val('note-excerpt'),
+      content: val('note-content'),
+      tag: val('note-tag') || '笔记',
+      emoji: val('note-emoji') || '💡',
+      is_published: checked('note-publish'),
+      type: 'note',
+    };
+    if (!data.title) { status('note-status', '标题必填', 'error'); return; }
+    if (!data.excerpt && !data.content) { status('note-status', '请至少填正文（excerpt）或长内容', 'error'); return; }
+    status('note-status', '保存中…', 'pending');
+    try {
+      await pb.collection('posts').create(data);
+      await bustCache();
+      status('note-status', '已保存 ✓ 笔记已发布', 'success');
+      ['note-title','note-slug','note-excerpt','note-content','note-tag','note-emoji'].forEach(id => setVal(id, ''));
+      setChecked('note-publish', true);
+      await loadNotes();
+    } catch (e) {
+      // type 字段不存在 → 退回纯 article 写法，提示用户
+      if (isUnknownFieldError(e, 'type')) {
+        status('note-status', '保存失败：PB schema 缺少 type 字段。请按 docs/PB-SCHEMA.md 给 posts 表加 type 字段后重试。', 'error');
+        return;
+      }
+      status('note-status', '保存失败：' + errorMessage(e), 'error');
+    }
+  });
+
+  registerConsoleLoader('notes', loadNotes);
+</script>

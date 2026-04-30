@@ -1,0 +1,285 @@
+/* ============================================================
+ * 便签 (Sticky Notes) 卡片墙 — ported from D:\projects\webui\bento\
+ *
+ * 设计语言：手账拼贴感 — 旋转卡片 + 图钉 + 胶带 + 多彩底色
+ * 核心特征：
+ *   - 4 列网格卡片墙 (.sn-wall)
+ *   - 伪随机旋转 (-3° ~ +3°) — hover 后归正 + 放大
+ *   - 6 色 pastel 底色 (mint / coral / lilac / cream / sky / peach)
+ *   - 红色图钉 (.sn-pin) 固定在卡片顶部
+ *   - 2px 粗边框 + hard shadow
+ *   - 用于笔记墙 / 日记手账 / 灵感碎片收集
+ *
+ * 使用：在 Layout.astro 的 <style is:global> 中
+ *       html[data-theme="sticky-notes"] { ... } 覆盖主题 token
+ * 组件：.sn-wall / .sn-card / .sn-pin / .sn-tape / .sn-diary-card
+ * ============================================================ */
+
+/* ===== 主题 CSS 变量 (注入到 :root via [data-theme]) ===== */
+/*
+  --sn-paper: #F8F4EC;
+  --sn-ink: #1A1814;
+  --sn-muted: #6B6358;
+  --sn-mint: #A8E6CF;    --sn-mint-d: #064E3B;
+  --sn-coral: #FFCCBC;   --sn-coral-d: #7C2D12;
+  --sn-lilac: #E0BBE4;   --sn-lilac-d: #4C1D95;
+  --sn-cream: #FFE082;   --sn-cream-d: #5A3500;
+  --sn-sky: #B5D8E8;     --sn-sky-d: #1E3A5F;
+  --sn-peach: #FFCBA4;   --sn-peach-d: #6B2E0E;
+  --sn-plum: #C5A3FF;
+*/
+
+/* ===== 页头 ===== */
+.sn-page { padding: 32px 32px 48px; }
+.sn-page-hd {
+  display: flex; justify-content: space-between; align-items: end;
+  margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+}
+.sn-page-h1 {
+  font-size: 60px; font-weight: 800;
+  letter-spacing: -0.03em; line-height: 0.95;
+  margin: 8px 0 0;
+  color: var(--sn-ink, #1A1814);
+}
+.sn-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* ===== Stats strip (5 列迷你统计) ===== */
+.sn-stats-strip {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+  margin-bottom: 24px;
+}
+.sn-stat-mini {
+  background: var(--sn-plum, #C5A3FF);
+  color: var(--sn-lilac-d, #4C1D95);
+  border: 2px solid var(--sn-ink, #1A1814);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 3px 3px 0 var(--sn-ink, #1A1814);
+}
+.sn-stat-l { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.75; font-weight: 700; margin-bottom: 4px; }
+.sn-stat-v { font-size: 36px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+
+/* ===== Filter pills ===== */
+.sn-filter-pillrow { display: flex; gap: 6px; flex-wrap: wrap; }
+.sn-fpill {
+  padding: 7px 14px;
+  background: #fff;
+  border: 2px solid var(--sn-ink, #1A1814);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--sn-ink, #1A1814);
+  box-shadow: 2px 2px 0 var(--sn-ink, #1A1814);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.sn-fpill:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--sn-ink, #1A1814); }
+.sn-fpill.active { background: var(--sn-ink, #1A1814); color: var(--sn-paper, #F8F4EC); }
+
+/* ==================================================================
+ * 📌 便签卡片墙 (Notes Wall)
+ * ================================================================== */
+.sn-wall {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* ===== 便签卡 ===== */
+.sn-card {
+  border: 2px solid var(--sn-ink, #1A1814);
+  border-radius: 14px;
+  padding: 18px;
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--sn-ink, #1A1814);
+  position: relative;
+  transition: transform 200ms cubic-bezier(0.25, 0.8, 0.25, 1.2),
+              box-shadow 200ms;
+}
+.sn-card:hover {
+  transform: rotate(0deg) scale(1.04) !important;
+  box-shadow: 5px 5px 0 var(--sn-ink, #1A1814);
+  z-index: 5;
+}
+
+/* 6 色变体 */
+.sn-card.mint  { background: var(--sn-mint, #A8E6CF); color: var(--sn-mint-d, #064E3B); }
+.sn-card.coral { background: var(--sn-coral, #FFCCBC); color: var(--sn-coral-d, #7C2D12); }
+.sn-card.lilac { background: var(--sn-lilac, #E0BBE4); color: var(--sn-lilac-d, #4C1D95); }
+.sn-card.cream { background: var(--sn-cream, #FFE082); color: var(--sn-cream-d, #5A3500); }
+.sn-card.sky   { background: var(--sn-sky, #B5D8E8); color: var(--sn-sky-d, #1E3A5F); }
+.sn-card.peach { background: var(--sn-peach, #FFCBA4); color: var(--sn-peach-d, #6B2E0E); }
+
+/* ===== 图钉 (红色小圆点 + 硬投影) ===== */
+.sn-pin {
+  position: absolute;
+  top: -7px; left: 18px;
+  width: 12px; height: 12px;
+  border-radius: 99px;
+  background: #B8311E;
+  border: 2px solid var(--sn-ink, #1A1814);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  z-index: 2;
+}
+
+/* ===== 卡片内容 ===== */
+.sn-card-h {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700;
+  margin-bottom: 8px;
+}
+.sn-card-h .id { letter-spacing: 0.1em; opacity: 0.8; }
+.sn-card-h .d { opacity: 0.5; }
+.sn-card h4 { font-size: 15px; font-weight: 800; line-height: 1.3; margin: 0 0 8px; }
+.sn-card p { font-size: 12.5px; line-height: 1.6; margin: 0 0 12px; opacity: 0.85; }
+
+/* 卡片底部（tags + links） */
+.sn-card-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; font-weight: 600;
+  border-top: 1px dashed currentColor;
+  padding-top: 8px;
+  opacity: 0.85;
+}
+.sn-card-foot .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.sn-card-foot .links { font-family: var(--font-mono); font-weight: 700; }
+
+/* ===== 卡片 tag pill ===== */
+.sn-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid currentColor;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* ==================================================================
+ * 📔 日记手账卡
+ * ================================================================== */
+.sn-diary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.sn-diary-card {
+  border: 2px solid var(--sn-ink, #1A1814);
+  border-radius: 14px;
+  padding: 18px;
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--sn-ink, #1A1814);
+  position: relative;
+  transition: transform 200ms cubic-bezier(0.25, 0.8, 0.25, 1.2);
+}
+.sn-diary-card:hover {
+  transform: rotate(0deg) scale(1.03) !important;
+  box-shadow: 6px 6px 0 var(--sn-ink, #1A1814);
+  z-index: 5;
+}
+.sn-diary-card.mint  { background: var(--sn-mint, #A8E6CF); color: var(--sn-mint-d, #064E3B); }
+.sn-diary-card.coral { background: var(--sn-coral, #FFCCBC); color: var(--sn-coral-d, #7C2D12); }
+.sn-diary-card.lilac { background: var(--sn-lilac, #E0BBE4); color: var(--sn-lilac-d, #4C1D95); }
+.sn-diary-card.cream { background: var(--sn-cream, #FFE082); color: var(--sn-cream-d, #5A3500); }
+.sn-diary-card.sky   { background: var(--sn-sky, #B5D8E8); color: var(--sn-sky-d, #1E3A5F); }
+.sn-diary-card.peach { background: var(--sn-peach, #FFCBA4); color: var(--sn-peach-d, #6B2E0E); }
+
+/* ===== 胶带装饰 ===== */
+.sn-tape {
+  position: absolute;
+  top: -6px; left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  width: 60px; height: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  border-left: 1px dashed rgba(0,0,0,0.2);
+  border-right: 1px dashed rgba(0,0,0,0.2);
+  z-index: 2;
+}
+
+/* ===== 日记卡头 (日期 + 星期) ===== */
+.sn-diary-cardh { display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px; }
+.sn-diary-d {
+  font-family: "Noto Serif SC", serif;
+  font-size: 28px; font-weight: 900;
+  line-height: 1; letter-spacing: -0.02em;
+}
+.sn-diary-w { font-size: 11px; letter-spacing: 0.16em; opacity: 0.6; margin-top: 2px; font-weight: 700; }
+
+/* ===== 天气 / 心情贴纸 ===== */
+.sn-diary-stickers { display: flex; flex-direction: column; gap: 4px; align-items: end; }
+.sn-emoji-w, .sn-emoji-m {
+  font-size: 11px; padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.2);
+  font-weight: 700;
+}
+.sn-pubmark {
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 99px; font-weight: 700;
+}
+.sn-pubmark.pub { background: var(--sn-mint-d, #064E3B); color: #fff; }
+.sn-pubmark.priv { background: #B8311E; color: #fff; }
+
+.sn-diary-card h3 { font-size: 17px; font-weight: 800; line-height: 1.3; margin: 8px 0; }
+.sn-diary-card p { font-size: 12.5px; line-height: 1.65; margin: 0 0 12px; opacity: 0.85; }
+
+.sn-diary-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px dashed currentColor;
+  padding-top: 10px;
+  font-size: 11px; opacity: 0.85;
+  font-family: var(--font-mono);
+}
+
+/* ===== 迷你按钮 ===== */
+.sn-mini-btn {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--sn-ink, #1A1814);
+  background: #fff;
+  color: var(--sn-ink, #1A1814);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 2px 2px 0 var(--sn-ink, #1A1814);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.sn-mini-btn:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--sn-ink, #1A1814); }
+.sn-mini-btn.primary { background: var(--sn-ink, #1A1814); color: var(--sn-paper, #F8F4EC); }
+
+/* ==================================================================
+ * 🎴 DCPostIt — 经典黄色便利贴（设计画布注释用）
+ * ================================================================== */
+.dc-postit {
+  position: absolute;
+  background: #FEF4A8;
+  padding: 14px 16px;
+  font-family: "Comic Sans MS", "Marker Felt", "Segoe Print", cursive;
+  font-size: 14px; line-height: 1.4;
+  color: #5A4A2A;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  z-index: 5;
+}
+
+/* ===== 响应式降级 ===== */
+@media (max-width: 768px) {
+  .sn-wall { grid-template-columns: repeat(2, 1fr); }
+  .sn-diary-grid { grid-template-columns: repeat(2, 1fr); }
+  .sn-stats-strip { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .sn-wall { grid-template-columns: 1fr; }
+  .sn-diary-grid { grid-template-columns: 1fr; }
+  .sn-stats-strip { grid-template-columns: 1fr; }
+}

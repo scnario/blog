@@ -16,7 +16,6 @@ export type TileId =
   | 'tags'             // 标签云
   | 'notes'            // 最新笔记 3 张小卡（聚合在一个 tile 里）
   | 'more-articles'    // 次新博客 3 张
-  | 'tools'
   | 'footer';
 
 export interface TileSpec {
@@ -48,7 +47,6 @@ export const PRESETS: Record<string, BentoPreset> = {
       { id: 'tags',           span: 3 },
       { id: 'notes',          span: 3 },
       { id: 'more-articles',  span: 12 },
-      { id: 'tools',          span: 6 },
       { id: 'footer',         span: 12 },
     ],
   },
@@ -65,7 +63,6 @@ export const PRESETS: Record<string, BentoPreset> = {
       { id: 'notes',          span: 4 },
       { id: 'diaries',        span: 4 },
       { id: 'music',          span: 6 },
-      { id: 'tools',          span: 6 },
       { id: 'footer',         span: 12 },
     ],
   },
@@ -82,7 +79,6 @@ export const PRESETS: Record<string, BentoPreset> = {
       { id: 'notes',    span: 6 },
       { id: 'tags',     span: 6 },
       { id: 'more-articles', span: 12 },
-      { id: 'tools',    span: 12 },
       { id: 'footer',   span: 12 },
     ],
   },

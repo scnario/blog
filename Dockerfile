@@ -23,5 +23,9 @@ COPY --from=builder /app/package.json ./
 
 EXPOSE 80
 
+# Docker 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:80/', r => {process.exit(r.statusCode===200||r.statusCode===301?0:1)})" || exit 1
+
 # 启动 Astro 的动态服务端程序
 CMD ["node", "./dist/server/entry.mjs"]

@@ -1,92 +1,220 @@
 ---
+/**
+ * 目录侧栏 — 主题感知 + scroll-spy
+ *
+ * 颜色 / 字体 / 圆角全走 Layout 注入的 --surface-* / --card-* / --prose-* 变量；
+ * 5 套主题下 active item 的高亮颜色都是该主题 --surface-link，对比度自然达标。
+ */
 const { toc } = Astro.props;
 ---
-<div id="toc-panel" class="sticky top-12 max-h-[calc(100vh-6rem)] overflow-y-auto no-scrollbar glass-panel group rounded-2xl p-6 transition-all duration-500 hover:bg-[#202124]/50">
-  <h3 class="text-[1.1em] font-bold text-[#f8fafc] mb-4 border-b border-white/10 pb-3 flex items-center gap-2">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+<div id="toc-panel" class="toc">
+  <h3 class="toc-heading">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
     Catalog
   </h3>
-  
-  <ul class="space-y-3 text-[0.95em] transition-all duration-500 ease-out toc-blur group-hover:filter-none group-hover:opacity-100">
+
+  <ul class="toc-list">
     {toc && toc.length > 0 ? (
       toc.map((heading: any) => (
-        <li style={`margin-left: ${(heading.depth - 2) * 12}px`}>
-          <a href={`#${heading.slug}`} data-slug={heading.slug} class="toc-link block text-[#a1a1aa] hover:text-[var(--text-accent)] hover:translate-x-1 transition-all truncate border-none">
+        <li class="toc-item" style={`padding-left: ${(heading.depth - 2) * 12}px`}>
+          <a href={`#${heading.slug}`} data-slug={heading.slug} class="toc-link">
             {heading.text}
           </a>
         </li>
       ))
     ) : (
-      <li class="text-[#6b7280] italic">当前页面无目录</li>
+      <li class="toc-empty">当前页面无目录</li>
     )}
   </ul>
 </div>
 
+<style>
+  .toc {
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+    color: var(--card-fg);
+    border-radius: 16px;
+    padding: 18px 20px;
+    /* 自带的滚动条收起 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-faint) transparent;
+    transition: box-shadow 220ms;
+  }
+  .toc::-webkit-scrollbar { width: 6px; }
+  .toc::-webkit-scrollbar-thumb {
+    background: var(--surface-faint);
+    border-radius: 999px;
+  }
+
+  /* 默认：内容微虚化 + 降透明，避免和正文抢视线
+     :hover / :focus-within 时清晰，并在边缘加一道主题色细描边 */
+  .toc-heading,
+  .toc-list,
+  .toc-empty {
+    filter: blur(1.6px);
+    opacity: 0.55;
+    transition: filter 220ms ease, opacity 220ms ease;
+  }
+  .toc:hover .toc-heading,
+  .toc:hover .toc-list,
+  .toc:hover .toc-empty,
+  .toc:focus-within .toc-heading,
+  .toc:focus-within .toc-list,
+  .toc:focus-within .toc-empty {
+    filter: none;
+    opacity: 1;
+  }
+  .toc:hover,
+  .toc:focus-within {
+    box-shadow: var(--card-shadow),
+                0 0 0 1px color-mix(in oklab, var(--surface-link) 25%, transparent);
+  }
+  /* active 项始终清晰 — 永远知道"我读到哪了" */
+  .toc-link.is-active {
+    filter: none !important;
+    opacity: 1 !important;
+  }
+
+  /* 减弱动画偏好：取消 blur（GPU 友好），仍保留 opacity 弱化 */
+  @media (prefers-reduced-motion: reduce) {
+    .toc-heading,
+    .toc-list,
+    .toc-empty {
+      filter: none;
+      transition: opacity 0ms;
+    }
+  }
+
+  .toc-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--prose-hr);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--surface-fg);
+  }
+
+  .toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .toc-item {
+    line-height: 1.55;
+  }
+
+  .toc-link {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--surface-faint);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+    transition: color 180ms, transform 180ms, background 180ms, border-color 180ms;
+    /* 长标题截断 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .toc-link:hover {
+    color: var(--surface-fg);
+    transform: translateX(2px);
+    background: color-mix(in oklab, var(--surface-fg) 5%, transparent);
+  }
+
+  /* scroll-spy 命中态 — 用主题 link 色 */
+  .toc-link.is-active {
+    color: var(--surface-link);
+    font-weight: 600;
+    border-left-color: var(--surface-link);
+    transform: translateX(2px);
+    background: color-mix(in oklab, var(--surface-link) 8%, transparent);
+  }
+
+  .toc-empty {
+    font-size: 12px;
+    color: var(--surface-faint);
+    font-style: italic;
+    padding: 4px 8px;
+  }
+
+  /* magazine 主题 — 去圆角，硬朗杂志感 */
+  html[data-theme="magazine"] .toc { border-radius: 0; }
+  html[data-theme="magazine"] .toc-link,
+  html[data-theme="magazine"] .toc-link.is-active { border-radius: 0; }
+</style>
+
 <script>
-  // 💡 阅读进度追踪器 (Scroll Spy)
-  document.addEventListener('DOMContentLoaded', () => {
-    // 监听所有的 h2, h3 标签
+  // 阅读进度追踪 (Scroll Spy) — 用 astro:page-load 兼容 ClientRouter 路由切换
+  document.addEventListener('astro:page-load', () => {
     const headings = Array.from(document.querySelectorAll('main h2, main h3'));
-    const tocLinks = document.querySelectorAll('.toc-link');
+    const tocLinks = document.querySelectorAll<HTMLAnchorElement>('.toc-link');
     const tocPanel = document.getElementById('toc-panel');
-    
+
     if (headings.length === 0 || tocLinks.length === 0) return;
 
-    let scrollTimeout = null;
+    let scrollTimeout: number | null = null;
 
     const onScroll = () => {
       if (scrollTimeout) return;
-      
+
       scrollTimeout = requestAnimationFrame(() => {
         let currentSlug = '';
-        
-        // 扫描：找出距离视口顶部最近的标题 (100px 为偏移容差)
+
+        // 找出距离视口顶部最近的标题（容差 100px）
         for (const h of headings) {
           const rect = h.getBoundingClientRect();
-          if (rect.top <= 100) { 
+          if (rect.top <= 100) {
             currentSlug = h.id;
           } else {
-            break; 
+            break;
           }
         }
-        
-        // 如果页面在最顶端，默认点亮第一个目录项
+
+        // 顶端时点亮第一个
         if (!currentSlug && headings.length > 0) {
-          currentSlug = headings[0].id;
+          currentSlug = (headings[0] as HTMLElement).id;
         }
 
-        // 高亮特效施加
         tocLinks.forEach(link => {
-          // 1. 重置为默认黯淡状态
-          link.classList.remove('!text-[var(--text-accent)]', 'translate-x-2', 'font-bold');
-          
-          // 2. 找到当前正在阅读的项，赋予强烈的视觉强调
-          if (link.getAttribute('data-slug') === currentSlug) {
-            // !text 强制覆盖尾部颜色，并向右移动一点点
-            link.classList.add('!text-[var(--text-accent)]', 'translate-x-2', 'font-bold');
-            
-            // 3. 超细节：如果高亮的条目跑出了可视区，让面板自动往下滚
-            if (tocPanel) {
-              const panelRect = tocPanel.getBoundingClientRect();
-              const linkRect = link.getBoundingClientRect();
-              
-              if (linkRect.top < panelRect.top || linkRect.bottom > panelRect.bottom) {
-                tocPanel.scrollTo({
-                  top: link.offsetTop - panelRect.height / 2, 
-                  behavior: 'smooth'
-                });
-              }
+          const isActive = link.getAttribute('data-slug') === currentSlug;
+          link.classList.toggle('is-active', isActive);
+
+          // 如果当前 active 项跑到 panel 可视外，自动滚动 panel
+          if (isActive && tocPanel) {
+            const panelRect = tocPanel.getBoundingClientRect();
+            const linkRect = link.getBoundingClientRect();
+            if (linkRect.top < panelRect.top || linkRect.bottom > panelRect.bottom) {
+              tocPanel.scrollTo({
+                top: link.offsetTop - panelRect.height / 2,
+                behavior: 'smooth',
+              });
             }
           }
         });
+
         scrollTimeout = null;
       });
     };
 
-    // 绑定滚动事件，passive: true 能大幅提升渲染性能
     window.addEventListener('scroll', onScroll, { passive: true });
-    
-    // 初始化时就执行一次，确保落地高亮
     setTimeout(onScroll, 100);
   });
 </script>

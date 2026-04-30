@@ -1,0 +1,141 @@
+<div class="tab-panel" data-panel="settings">
+  <div class="panel-head">
+    <h2>站点设置</h2>
+    <p class="muted">所有字段保存到 <code>settings</code> 表第一条记录；前端 5 分钟缓存。</p>
+  </div>
+
+  <div class="card">
+    <h3>个人</h3>
+    <div class="form-grid">
+      <label>昵称
+        <input type="text" id="set-nickname" placeholder="scnario" />
+      </label>
+      <label>Tagline
+        <input type="text" id="set-tagline" placeholder="Day by day, life by life." />
+      </label>
+      <label class="span-2">简介
+        <textarea id="set-bio" rows="2" placeholder="介绍一下自己…"></textarea>
+      </label>
+      <label>GitHub URL
+        <input type="text" id="set-github" placeholder="https://github.com/scnario/blog" />
+      </label>
+      <label>Email
+        <input type="text" id="set-email" placeholder="hello@example.com" />
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>音乐播放器</h3>
+    <div class="form-grid">
+      <label class="span-2">音频 URL
+        <input type="text" id="set-music-url" placeholder="https://…/song.mp3" />
+      </label>
+      <label>曲名
+        <input type="text" id="set-music-title" />
+      </label>
+      <label>艺术家
+        <input type="text" id="set-music-artist" />
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>视觉变量</h3>
+    <div class="form-grid">
+      <label>主题色
+        <input type="color" id="set-theme-color" value="#A8E6CF" />
+      </label>
+      <label>玻璃透明 (0–1)
+        <input type="number" step="0.05" min="0" max="1" id="set-glass-opacity" />
+      </label>
+      <label>玻璃模糊 (px)
+        <input type="number" min="0" max="40" id="set-glass-blur" />
+      </label>
+      <label>TOC 文字模糊 (px)
+        <input type="number" min="0" max="20" id="set-toc-blur" />
+      </label>
+      <label class="checkbox span-2">
+        <input type="checkbox" id="set-particles" />
+        <span>启用粒子背景</span>
+      </label>
+      <label>纸底色 visual_paper
+        <input type="color" id="set-visual-paper" value="#F8F4EC" />
+      </label>
+      <label>墨色 visual_ink
+        <input type="color" id="set-visual-ink" value="#1A1814" />
+      </label>
+      <label>Mint 瓷砖色
+        <input type="color" id="set-visual-mint" value="#A8E6CF" />
+      </label>
+      <label>Coral 瓷砖色
+        <input type="color" id="set-visual-coral" value="#FFCCBC" />
+      </label>
+      <label>Lilac 瓷砖色
+        <input type="color" id="set-visual-lilac" value="#E0BBE4" />
+      </label>
+      <label>Cream 瓷砖色
+        <input type="color" id="set-visual-cream" value="#FFE082" />
+      </label>
+      <label>点阵间距 (px)
+        <input type="number" min="8" max="64" id="set-visual-dot-size" />
+      </label>
+      <label>控制台强调色
+        <input type="color" id="set-console-accent" value="#B8311E" />
+      </label>
+      <label class="span-2">硬投影 CSS
+        <input type="text" id="set-visual-shadow" placeholder="4px 4px 0 #1A1814" />
+      </label>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="settings-save-btn" class="btn-primary">保存站点设置</button>
+    <span id="settings-status" class="muted"></span>
+  </div>
+</div>
+
+<script>
+  import { $, bustCache, checked, errorMessage, getCurrentSettingsId, pb, setCurrentSettingsId, status, val } from '../../lib/console-client';
+
+  $('settings-save-btn')?.addEventListener('click', async () => {
+    const data = {
+      nickname: val('set-nickname'),
+      tagline: val('set-tagline'),
+      bio: val('set-bio'),
+      social_github: val('set-github'),
+      social_email: val('set-email'),
+      music_url: val('set-music-url'),
+      music_title: val('set-music-title'),
+      music_artist: val('set-music-artist'),
+      theme_color: val('set-theme-color'),
+      glass_opacity: parseFloat(val('set-glass-opacity')) || 0.8,
+      glass_blur: parseInt(val('set-glass-blur')) || 10,
+      toc_text_blur: parseInt(val('set-toc-blur')) || 5,
+      particles_enabled: checked('set-particles'),
+      visual_paper: val('set-visual-paper') || '#F8F4EC',
+      visual_ink: val('set-visual-ink') || '#1A1814',
+      visual_mint: val('set-visual-mint') || '#A8E6CF',
+      visual_coral: val('set-visual-coral') || '#FFCCBC',
+      visual_lilac: val('set-visual-lilac') || '#E0BBE4',
+      visual_cream: val('set-visual-cream') || '#FFE082',
+      visual_dot_size: parseInt(val('set-visual-dot-size')) || 24,
+      visual_shadow: val('set-visual-shadow') || '4px 4px 0 #1A1814',
+      console_accent: val('set-console-accent') || '#B8311E',
+    };
+    status('settings-status', '保存中…', 'pending');
+    try {
+      const currentSettingsId = getCurrentSettingsId();
+      if (currentSettingsId) {
+        await pb.collection('settings').update(currentSettingsId, data);
+      } else {
+        const r = await pb.collection('settings').create(data);
+        setCurrentSettingsId(r.id);
+      }
+      await bustCache();
+      status('settings-status', '已保存 ✓ 刷新任意页面立即生效', 'success');
+    } catch (e) {
+      status('settings-status', '保存失败：' + errorMessage(e), 'error');
+    }
+  });
+</script>

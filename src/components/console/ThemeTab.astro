@@ -1,0 +1,75 @@
+---
+import { THEMES } from '../../lib/theme';
+
+const themes = Object.values(THEMES);
+---
+
+<div class="tab-panel" data-panel="theme">
+  <div class="panel-head">
+    <h2>主题</h2>
+    <p class="muted">cookie <code>site_theme</code> 优先级 &gt; PB <code>active_theme</code> &gt; bento 默认。</p>
+  </div>
+
+  <div class="card">
+    <h3>全站默认主题（写入 PB）</h3>
+    <div class="theme-grid">
+      {themes.map(t => (
+        <label class="theme-card">
+          <input type="radio" name="active-theme" value={t.slug} />
+          <div>
+            <div class="theme-name">{t.icon} {t.name}</div>
+            <div class="muted small">{t.tagline}</div>
+            <div class="muted small mono">支持: {t.supports.join(' / ')}</div>
+          </div>
+        </label>
+      ))}
+    </div>
+    <div class="row">
+      <button id="theme-save-btn" class="btn-primary">保存默认主题</button>
+      <span id="theme-status" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>当前浏览器 cookie 主题</h3>
+    <p class="muted small">仅影响这个浏览器；右下角浮动切换器也会修改这里。</p>
+    <div class="row" id="cookie-theme-row">
+      <span>当前 cookie：</span>
+      <code id="cookie-theme-current">—</code>
+      <button id="cookie-theme-clear" class="btn-ghost small">清除 cookie，回退到 PB 默认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { $, bustCache, clearCookie, errorMessage, getCurrentSettingsId, pb, refreshCookieTheme, setCookie, setCurrentSettingsId, status } from '../../lib/console-client';
+
+  $('theme-save-btn')?.addEventListener('click', async () => {
+    const radio = document.querySelector<HTMLInputElement>('input[name="active-theme"]:checked');
+    if (!radio) { status('theme-status', '请选择主题', 'error'); return; }
+    status('theme-status', '保存中…', 'pending');
+    try {
+      const data = { active_theme: radio.value };
+      const currentSettingsId = getCurrentSettingsId();
+      if (currentSettingsId) {
+        await pb.collection('settings').update(currentSettingsId, data);
+      } else {
+        const r = await pb.collection('settings').create(data);
+        setCurrentSettingsId(r.id);
+      }
+      // 同步 cookie，让本浏览器立刻看到效果（PB 是站点默认，cookie 是个人偏好）
+      setCookie('site_theme', radio.value);
+      refreshCookieTheme();
+      const sideTheme = $('sidecar-theme');
+      if (sideTheme) sideTheme.textContent = radio.value;
+      await bustCache();
+      status('theme-status', '已保存 ✓ 刷新任意页面立即应用', 'success');
+    } catch (e) {
+      status('theme-status', '保存失败：' + errorMessage(e), 'error');
+    }
+  });
+  $('cookie-theme-clear')?.addEventListener('click', () => {
+    clearCookie('site_theme');
+    refreshCookieTheme();
+  });
+</script>

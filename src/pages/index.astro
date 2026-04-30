@@ -1,4 +1,5 @@
 ---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables assist/source/organizeImports: Astro frontmatter symbols are consumed by the template/script blocks.
 /**
  * 生产版 Bento 首页
  *
@@ -75,7 +76,7 @@ function tagAccent(i: number) {
         );
 
         case 'latest-article': return heroArticle ? (
-          <a href={`/articles/${heroArticle.slug}`} class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #A8E6CF 0%, #7FD4B8 100%); padding: 32px; text-decoration: none; color: #064E3B; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px;`} data-tile-idx={idx}>
+          <a href={`/articles/${heroArticle.slug}`} class="tile tile-glow latest-article-tile" style={`${style} background: linear-gradient(135deg, #A8E6CF 0%, #7FD4B8 100%); padding: 32px; text-decoration: none; color: #064E3B; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px;`} data-tile-idx={idx}>
             <div>
               <span class="chip" style="background: rgba(255,255,255,0.5); color: #064E3B;">{heroArticle.emoji} {heroArticle.tag}</span>
               <h2 style="font-size: 28px; font-weight: 800; line-height: 1.2; margin: 18px 0 12px; letter-spacing: -0.02em;">{heroArticle.title}</h2>
@@ -213,22 +214,6 @@ function tagAccent(i: number) {
           </div>
         );
 
-        case 'tools': return (
-          <div class="tile tile-glow" style={`${style} background: linear-gradient(135deg, #FFFFFF 0%, #F0F4FF 100%); padding: 24px;`} data-tile-idx={idx}>
-            <div class="mono" style="font-size: 10px; letter-spacing: 0.08em; color: #8A8A94; margin-bottom: 12px;">TOOLS · 工具</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <a href="/correct" style="padding: 12px; border-radius: 10px; background: rgba(107,91,255,0.08); text-decoration: none; color: #1A1A1F;">
-                <div style="font-weight: 600; font-size: 13px;">🎵 歌词修正</div>
-                <div style="font-size: 11px; color: #8A8A94; margin-top: 2px;">校对工具</div>
-              </a>
-              <a href="/console" style="padding: 12px; border-radius: 10px; background: rgba(168,230,207,0.18); text-decoration: none; color: #1A1A1F;">
-                <div style="font-weight: 600; font-size: 13px;">⚙ 控制台</div>
-                <div style="font-size: 11px; color: #8A8A94; margin-top: 2px;">管理后台</div>
-              </a>
-            </div>
-          </div>
-        );
-
         case 'footer': return (
           <div style={`${style} padding: 20px 0; border-top: 1px solid rgba(0,0,0,0.06); margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; color: #8A8A94; font-size: 12px;`} data-tile-idx={idx}>
             <span>© {new Date().getFullYear()} {settings.nickname} · 数字花园</span>
@@ -243,8 +228,8 @@ function tagAccent(i: number) {
 
   <style is:global>
     :root {
-      --tile-shadow: 0 8px 24px rgba(26, 26, 31, 0.06), 0 2px 6px rgba(26, 26, 31, 0.04);
-      --tile-shadow-hover: 0 16px 40px rgba(26, 26, 31, 0.12), 0 4px 12px rgba(26, 26, 31, 0.08);
+      --tile-shadow: var(--visual-shadow, 4px 4px 0 #1A1814);
+      --tile-shadow-hover: 6px 6px 0 var(--visual-ink, #1A1814);
     }
     .bento {
       display: grid;
@@ -257,7 +242,8 @@ function tagAccent(i: number) {
     }
     .tile {
       background: #FFFFFF;
-      border-radius: 24px;
+      border: 2px solid var(--visual-ink, #1A1814);
+      border-radius: 22px;
       padding: 24px;
       box-shadow: var(--tile-shadow);
       position: relative;
@@ -271,7 +257,21 @@ function tagAccent(i: number) {
       opacity: 1;
       transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--ty, 0px)) scale(1);
     }
-    .tile:hover { --ty: -4px; box-shadow: var(--tile-shadow-hover); }
+    .tile:hover { --ty: 0px; box-shadow: var(--tile-shadow-hover); }
+    .hero-tile {
+      border-color: var(--bn-mint-d, #064E3B) !important;
+      box-shadow: 4px 4px 0 var(--bn-mint-d, #064E3B) !important;
+    }
+    html[data-theme="bento-webui"] .hero-tile {
+      background: var(--visual-mint, #A8E6CF) !important;
+    }
+    html[data-theme="bento-webui"] .hero-title {
+      background: none;
+      color: var(--bn-mint-d, #064E3B);
+      -webkit-background-clip: initial;
+      background-clip: initial;
+      animation: none;
+    }
     .tile-glow::after {
       content: '';
       position: absolute; inset: -1px;
@@ -335,13 +335,15 @@ function tagAccent(i: number) {
     .btn-primary, .btn-secondary {
       padding: 12px 20px;
       border-radius: 12px;
+      border: 2px solid var(--visual-ink, #1A1814);
       font-size: 14px; font-weight: 600;
       text-decoration: none;
+      box-shadow: 3px 3px 0 var(--visual-ink, #1A1814);
       transition: transform 220ms cubic-bezier(.2,.7,.2,1);
       will-change: transform;
     }
-    .btn-primary { background: #1A1A1F; color: #FFFFFF; }
-    .btn-secondary { background: rgba(0,0,0,0.06); color: #1A1A1F; }
+    .btn-primary { background: var(--visual-ink, #1A1814); color: var(--visual-paper, #F8F4EC); }
+    .btn-secondary { background: #FFFFFF; color: var(--visual-ink, #1A1814); }
 
     .tag-pill { transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms; }
     .tag-pill:hover { transform: translateY(-3px) rotate(-2deg); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
@@ -363,7 +365,8 @@ function tagAccent(i: number) {
   </style>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    // 用 astro:page-load 而非 DOMContentLoaded — ClientRouter 路由切换后也能重新触发
+    document.addEventListener('astro:page-load', () => {
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       // Hero 标题逐字
@@ -394,14 +397,28 @@ function tagAccent(i: number) {
       // 3D Tilt + 光晕
       if (!reduce) {
         document.querySelectorAll<HTMLElement>('.tile-glow').forEach(el => {
+          if (el.dataset.tiltBound === 'true') return;
+          el.dataset.tiltBound = 'true';
           el.addEventListener('mousemove', (e) => {
             const r = el.getBoundingClientRect();
             const x = e.clientX - r.left;
             const y = e.clientY - r.top;
             el.style.setProperty('--mx', `${x}px`);
             el.style.setProperty('--my', `${y}px`);
-            el.style.setProperty('--rx', `${-((y - r.height/2)/(r.height/2)) * 5}deg`);
-            el.style.setProperty('--ry', `${((x - r.width/2)/(r.width/2)) * 6}deg`);
+
+            const edgeGuard = 14;
+            if (x < edgeGuard || y < edgeGuard || x > r.width - edgeGuard || y > r.height - edgeGuard) {
+              el.style.setProperty('--rx', '0deg');
+              el.style.setProperty('--ry', '0deg');
+              return;
+            }
+
+            const isHeroTile = el.classList.contains('hero-tile');
+            const isLatestArticleTile = el.classList.contains('latest-article-tile');
+            const tiltX = isHeroTile ? 1.2 : isLatestArticleTile ? 2 : 3;
+            const tiltY = isHeroTile ? 1.6 : isLatestArticleTile ? 2.6 : 4;
+            el.style.setProperty('--rx', `${-((y - r.height/2)/(r.height/2)) * tiltX}deg`);
+            el.style.setProperty('--ry', `${((x - r.width/2)/(r.width/2)) * tiltY}deg`);
           });
           el.addEventListener('mouseleave', () => {
             el.style.setProperty('--rx', '0deg');

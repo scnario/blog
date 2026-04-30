@@ -1,0 +1,424 @@
+---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables: Astro frontmatter symbols are consumed by the template.
+/**
+ * 全文搜索页 — SSR 输出文章索引，浏览器端 Fuse.js 模糊搜索。
+ * 搜索仅发生在客户端，适配 Astro ClientRouter 的 astro:page-load 生命周期。
+ */
+import Layout from '../layouts/Layout.astro';
+import { getLatestArticles, type Article } from '../lib/queries';
+
+const articles = await getLatestArticles(0);
+
+type SearchArticle = Pick<Article, 'slug' | 'title' | 'content' | 'excerpt' | 'tag' | 'emoji' | 'created'>;
+
+const searchIndex: SearchArticle[] = articles.map((article) => ({
+  slug: article.slug,
+  title: article.title,
+  content: article.content,
+  excerpt: article.excerpt,
+  tag: article.tag,
+  emoji: article.emoji,
+  created: article.created,
+}));
+
+const serializedIndex = JSON.stringify(searchIndex).replace(/</g, '\\u003c');
+---
+
+<Layout title="搜索 | 数字花园" showSidebar={true} showToc={false}>
+  <section class="search-page" data-search-page>
+    <header class="page-head">
+      <div class="kicker mono">SEARCH</div>
+      <h1>搜索</h1>
+      <p class="muted">在 {articles.length} 篇博客中搜索标题、摘要与正文。</p>
+      <a class="search-nav-link" href="/search" aria-current="page">当前搜索入口：/search</a>
+    </header>
+
+    <div class="search-box" role="search">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <input
+        id="search-input"
+        type="search"
+        placeholder="输入关键词搜索博客…"
+        autocomplete="off"
+        aria-label="搜索博客"
+      />
+      <button id="search-clear" class="clear-btn" type="button" aria-label="清空搜索" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+
+    <div id="search-status" class="status" aria-live="polite">输入关键词后开始搜索。</div>
+    <div id="search-results" class="results" aria-label="搜索结果"></div>
+  </section>
+
+  <script type="application/json" id="search-data" set:html={serializedIndex} />
+
+  <style>
+    .search-page { width: 100%; }
+    .page-head { margin-bottom: 28px; }
+    .kicker {
+      font-size: 11px;
+      color: var(--surface-faint);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .page-head h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--surface-fg);
+    }
+    .muted { color: var(--surface-muted); margin: 8px 0 0; }
+    .mono { font-family: var(--font-mono); }
+    .search-nav-link {
+      display: inline-flex;
+      margin-top: 12px;
+      color: var(--surface-link);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .search-nav-link:hover { text-decoration: underline; }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 18px;
+      padding: 0 16px;
+      color: var(--surface-muted);
+      box-shadow: var(--card-shadow);
+      transition: border-color 180ms, box-shadow 180ms;
+    }
+    .search-box:focus-within {
+      border-color: var(--surface-link);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--surface-link) 18%, transparent);
+    }
+    .search-icon {
+      width: 22px;
+      height: 22px;
+      flex: 0 0 auto;
+      color: var(--surface-faint);
+    }
+    #search-input {
+      width: 100%;
+      min-height: 58px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--surface-fg);
+      font: 500 16px/1.4 var(--font-body);
+    }
+    #search-input::placeholder { color: var(--surface-faint); }
+    .clear-btn {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--card-border);
+      border-radius: 999px;
+      background: var(--card-bg);
+      color: var(--surface-muted);
+      cursor: pointer;
+      transition: color 160ms, border-color 160ms, transform 160ms;
+    }
+    .clear-btn:hover {
+      color: var(--surface-link);
+      border-color: var(--surface-link);
+      transform: scale(1.04);
+    }
+    .clear-btn svg { width: 18px; height: 18px; }
+
+    .status {
+      margin: 16px 0 18px;
+      color: var(--surface-muted);
+      font-size: 13px;
+    }
+    .results {
+      display: grid;
+      gap: 16px;
+    }
+    .empty {
+      padding: 48px 24px;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
+      color: var(--card-fg);
+    }
+    .empty-icon { font-size: 42px; margin-bottom: 12px; }
+    .empty-title { font-weight: 700; color: var(--surface-fg); }
+    .empty-text { margin-top: 6px; color: var(--surface-muted); font-size: 14px; }
+
+    .result-card {
+      display: block;
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 18px;
+      padding: 20px;
+      text-decoration: none;
+      color: var(--card-fg);
+      box-shadow: var(--card-shadow);
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms, border-color 180ms;
+    }
+    .result-card:hover {
+      transform: translate(2px, 2px);
+      border-color: var(--surface-link);
+      box-shadow: 0 10px 28px color-mix(in srgb, var(--surface-link) 18%, transparent);
+    }
+    .result-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      margin-bottom: 10px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      background: var(--prose-tag-bg);
+      color: var(--prose-tag-fg);
+    }
+    .date {
+      font-size: 11px;
+      color: var(--surface-faint);
+      letter-spacing: 0.02em;
+    }
+    .result-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      line-height: 1.35;
+      font-weight: 750;
+      color: var(--card-fg);
+      margin: 0 0 8px;
+    }
+    .result-excerpt,
+    .result-snippet {
+      color: var(--surface-muted);
+      font-size: 13.5px;
+      line-height: 1.65;
+      margin: 0;
+    }
+    .result-snippet {
+      margin-top: 10px;
+      padding-left: 12px;
+      border-left: 2px solid var(--card-border);
+      color: var(--surface-muted);
+    }
+    mark {
+      background: color-mix(in srgb, var(--surface-link) 24%, transparent);
+      color: var(--surface-fg);
+      border-radius: 4px;
+      padding: 0 2px;
+    }
+
+    html[data-theme="magazine"] .search-box,
+    html[data-theme="magazine"] .empty,
+    html[data-theme="magazine"] .result-card,
+    html[data-theme="magazine"] .tag { border-radius: 0; }
+
+    @media (max-width: 640px) {
+      .search-box { border-radius: 16px; padding: 0 12px; }
+      #search-input { min-height: 54px; font-size: 15px; }
+      .result-card { padding: 18px; }
+    }
+  </style>
+
+  <script>
+    import Fuse from 'fuse.js';
+    import { inViewStagger } from '../lib/motion';
+
+    interface SearchArticle {
+      slug: string;
+      title: string;
+      content: string;
+      excerpt: string;
+      tag: string;
+      emoji: string;
+      created: string;
+    }
+
+    interface MatchRange {
+      indices: readonly [number, number][];
+      key?: string;
+      value?: string;
+    }
+
+    const escapeHtml = (value: string) => value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const stripMarkup = (value: string) => value
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/[#>*_`\-[\]()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const formatDate = (value: string) => {
+      if (!value) return '';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
+    };
+
+    const highlightRanges = (value: string, indices: readonly [number, number][]) => {
+      if (indices.length === 0) return escapeHtml(value);
+      let output = '';
+      let cursor = 0;
+      const merged = [...indices]
+        .sort((a, b) => a[0] - b[0])
+        .reduce<[number, number][]>((ranges, [start, end]) => {
+          const last = ranges.at(-1);
+          if (last && start <= last[1] + 1) {
+            last[1] = Math.max(last[1], end);
+          } else {
+            ranges.push([start, end]);
+          }
+          return ranges;
+        }, []);
+
+      for (const [start, end] of merged) {
+        output += escapeHtml(value.slice(cursor, start));
+        output += `<mark>${escapeHtml(value.slice(start, end + 1))}</mark>`;
+        cursor = end + 1;
+      }
+      output += escapeHtml(value.slice(cursor));
+      return output;
+    };
+
+    const makeSnippet = (value: string, indices: readonly [number, number][]) => {
+      const text = stripMarkup(value);
+      if (!text) return '';
+      if (indices.length === 0) return `${escapeHtml(text.slice(0, 160))}${text.length > 160 ? '…' : ''}`;
+
+      const first = indices[0][0];
+      const start = Math.max(0, first - 72);
+      const end = Math.min(text.length, first + 120);
+      const prefix = start > 0 ? '…' : '';
+      const suffix = end < text.length ? '…' : '';
+      const shifted = indices
+        .map(([matchStart, matchEnd]) => [matchStart - start, matchEnd - start] as [number, number])
+        .filter(([matchStart, matchEnd]) => matchEnd >= 0 && matchStart < end - start)
+        .map(([matchStart, matchEnd]) => [Math.max(0, matchStart), Math.min(end - start - 1, matchEnd)] as [number, number]);
+
+      return `${prefix}${highlightRanges(text.slice(start, end), shifted)}${suffix}`;
+    };
+
+    const initSearch = () => {
+      const root = document.querySelector<HTMLElement>('[data-search-page]');
+      if (!root) return;
+
+      const input = root.querySelector<HTMLInputElement>('#search-input');
+      const clearButton = root.querySelector<HTMLButtonElement>('#search-clear');
+      const status = root.querySelector<HTMLElement>('#search-status');
+      const results = root.querySelector<HTMLElement>('#search-results');
+      const dataNode = root.querySelector<HTMLScriptElement>('#search-data');
+      if (!input || !clearButton || !status || !results || !dataNode) return;
+
+      const data = JSON.parse(dataNode.textContent || '[]') as SearchArticle[];
+      const fuse = new Fuse(data, {
+        includeMatches: true,
+        threshold: 0.35,
+        ignoreLocation: true,
+        minMatchCharLength: 2,
+        keys: [
+          { name: 'title', weight: 0.6 },
+          { name: 'excerpt', weight: 0.3 },
+          { name: 'content', weight: 0.1 },
+        ],
+      });
+
+      let timer = 0;
+
+      const emptyState = (icon: string, title: string, text: string) => {
+        results.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">${icon}</div>
+            <div class="empty-title">${escapeHtml(title)}</div>
+            <div class="empty-text">${escapeHtml(text)}</div>
+          </div>
+        `;
+      };
+
+      const render = () => {
+        const query = input.value.trim();
+        clearButton.hidden = query.length === 0;
+        if (!query) {
+          status.textContent = '输入关键词后开始搜索。';
+          emptyState('🔎', '等待搜索', '可以搜索标题、摘要和正文内容。');
+          return;
+        }
+
+        const matches = fuse.search(query, { limit: 20 });
+        if (matches.length === 0) {
+          status.textContent = `没有找到「${query}」。`;
+          emptyState('🫧', '没有结果', '换个关键词再试试。');
+          return;
+        }
+
+        status.textContent = `找到 ${matches.length} 条结果。`;
+        results.innerHTML = matches.map(({ item, matches: itemMatches }) => {
+          const rangesByKey = new Map<string, MatchRange>();
+          for (const match of itemMatches || []) {
+            if (match.key && match.value) rangesByKey.set(match.key, match as MatchRange);
+          }
+
+          const titleMatch = rangesByKey.get('title');
+          const excerptMatch = rangesByKey.get('excerpt');
+          const contentMatch = rangesByKey.get('content');
+          const title = titleMatch ? highlightRanges(item.title, titleMatch.indices) : escapeHtml(item.title);
+          const excerpt = excerptMatch ? highlightRanges(item.excerpt, excerptMatch.indices) : escapeHtml(item.excerpt);
+          const snippetSource = contentMatch?.value || item.content || item.excerpt;
+          const snippetRanges = contentMatch?.indices || [];
+          const snippet = makeSnippet(snippetSource, snippetRanges);
+
+          return `
+            <a class="result-card" href="/articles/${encodeURIComponent(item.slug)}">
+              <div class="result-meta">
+                <span class="tag">${escapeHtml(item.emoji)} ${escapeHtml(item.tag)}</span>
+                <span class="date mono">${escapeHtml(formatDate(item.created))}</span>
+              </div>
+              <h2 class="result-title">${title}</h2>
+              <p class="result-excerpt">${excerpt}</p>
+              ${snippet ? `<p class="result-snippet">${snippet}</p>` : ''}
+            </a>
+          `;
+        }).join('');
+        inViewStagger('.results > .result-card', { staggerMs: 45, y: 14 });
+      };
+
+      const schedule = () => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(render, 250);
+      };
+
+      input.addEventListener('input', schedule);
+      clearButton.addEventListener('click', () => {
+        input.value = '';
+        input.focus();
+        render();
+      });
+      render();
+    };
+
+    document.addEventListener('astro:page-load', initSearch);
+  </script>
+</Layout>

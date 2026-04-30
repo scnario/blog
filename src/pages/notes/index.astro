@@ -1,7 +1,10 @@
 ---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables: Astro frontmatter symbols are consumed by the template.
 /**
  * 笔记列表 — type='note' 过滤
- * 在 PB schema 升级（posts 表加 type 字段）前会显示空状态
+ *
+ * 主题适配：所有颜色 / 字体走 Layout.astro 注入的 --note-* / --surface-* 变量。
+ * 切换主题时整页跟着变（不再是硬编码的奶油黄）。
  */
 import Layout from '../../layouts/Layout.astro';
 import { getLatestNotes } from '../../lib/queries';
@@ -16,35 +19,163 @@ function fmtDate(s: string): string {
 ---
 
 <Layout title="笔记 | 数字花园">
-  <header style="margin-bottom: 28px;">
-    <div class="mono" style="font-size: 11px; color: #8A8A94; letter-spacing: 0.08em; margin-bottom: 8px;">NOTES</div>
-    <h1 style="font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -0.02em; margin: 0;">笔记</h1>
-    <p style="color: #52525B; margin: 8px 0 0;">短小灵感与技术片段 · 共 {notes.length} 条</p>
+  <header class="page-head">
+    <div class="kicker mono">NOTES</div>
+    <h1>笔记</h1>
+    <p class="muted">短小灵感与技术片段 · 共 {notes.length} 条</p>
   </header>
 
   {notes.length === 0 ? (
-    <div style="padding: 48px 24px; text-align: center; background: #FFFFFF; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.06);">
-      <div style="font-size: 48px; margin-bottom: 12px;">💡</div>
-      <div style="font-size: 16px; color: #52525B;">还没有笔记</div>
-      <div style="font-size: 12px; color: #8A8A94; margin-top: 6px; line-height: 1.6;">
-        需要先在 PB Admin 给 <code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">posts</code> 表加 <code style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;">type</code> 字段（select: article / note），<br/>然后到控制台创建 type=note 的短卡。
+    <div class="empty">
+      <div class="empty-icon">💡</div>
+      <div class="empty-title">还没有笔记</div>
+      <div class="empty-hint">
+        到 <a href="/console#notes">控制台 · 笔记 tab</a> 创建一条短卡。
+        若 PB 还没加 <code>posts.type</code> 字段，先按 <code>docs/PB-SCHEMA.md</code> 建表。
       </div>
     </div>
   ) : (
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
-      {notes.map(n => (
-        <a href={`/notes/${n.slug}`} style="display: block; padding: 18px; border-radius: 16px; background: linear-gradient(135deg, #FFF9F0 0%, #FFE9C8 100%); text-decoration: none; color: inherit; box-shadow: 0 4px 12px rgba(0,0,0,0.04); transition: transform 220ms;">
-          <div style="font-size: 22px; margin-bottom: 8px;">{n.emoji}</div>
-          <div style="font-weight: 700; font-size: 14px; line-height: 1.35; margin-bottom: 6px;">{n.title}</div>
-          <div style="font-size: 12px; color: #52525B; line-height: 1.55;">{n.excerpt}</div>
-          <div class="mono" style="font-size: 10px; color: #8A8A94; margin-top: 12px;">{fmtDate(n.created)}</div>
+    <div class="grid sn-wall">
+      {notes.map((n, i) => {
+        const colors = ['mint', 'coral', 'lilac', 'cream', 'sky', 'peach'];
+        const rot = (i % 2 === 0 ? -1 : 1) * ((i * 7) % 3 + 0.4);
+        return (
+        <a href={`/notes/${n.slug}`} class={`note sn-card ${colors[i % colors.length]}`} style={`transform: rotate(${rot}deg);`}>
+          <span class="sn-pin"></span>
+          <div class="note-emoji">{n.emoji}</div>
+          <div class="note-title">{n.title}</div>
+          <div class="note-excerpt">{n.excerpt}</div>
+          <div class="note-foot">
+            <span class="note-tag">{n.tag}</span>
+            <span class="note-date mono">{fmtDate(n.created)}</span>
+          </div>
         </a>
-      ))}
+        );
+      })}
     </div>
   )}
 
   <style>
-    a[href^="/notes/"]:hover { transform: translateY(-3px); }
-    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    /* --- 标题 --- */
+    .page-head { margin-bottom: 28px; }
+    .kicker {
+      font-size: 11px;
+      color: var(--surface-faint);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .page-head h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--surface-fg);
+    }
+    .muted { color: var(--surface-muted); margin: 8px 0 0; }
+    .mono { font-family: var(--font-mono); }
+
+    /* --- 空态 --- */
+    .empty {
+      padding: 48px 24px;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
+      color: var(--card-fg);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; color: var(--surface-fg); }
+    .empty-hint {
+      font-size: 13px;
+      color: var(--surface-muted);
+      margin-top: 8px;
+      line-height: 1.7;
+    }
+    .empty a { color: var(--surface-link); }
+    code {
+      font-family: var(--font-mono);
+      background: rgba(0,0,0,0.05);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+    }
+
+    /* --- 笔记网格 --- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .note {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px 20px;
+      border-radius: 14px;
+      background: var(--note-bg);
+      border: 2px solid var(--note-border);
+      color: var(--note-fg);
+      text-decoration: none;
+      box-shadow: var(--note-shadow);
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms;
+      min-height: 140px;
+    }
+    .note:hover {
+      transform: rotate(0deg) scale(1.04) !important;
+      box-shadow: var(--note-shadow-hover);
+      z-index: 5;
+    }
+    .note-emoji { font-size: 22px; line-height: 1; }
+    .note-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.35;
+      color: var(--note-fg);
+    }
+    .note-excerpt {
+      font-size: 13px;
+      color: var(--note-muted);
+      line-height: 1.6;
+      flex: 1;
+    }
+    .note-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .note-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--note-tag-bg);
+      color: var(--note-tag-fg);
+      letter-spacing: 0.04em;
+    }
+    .note-date {
+      font-size: 10px;
+      color: var(--surface-faint);
+    }
+
+    /* magazine 风格特别处理 — 没有圆角，只用粗黑边 */
+    html[data-theme="magazine"] .note {
+      border-radius: 0;
+    }
+    html[data-theme="magazine"] .note-title {
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
   </style>
+
+  <script>
+    import { inViewStagger } from '../../lib/motion';
+    document.addEventListener('astro:page-load', () => {
+      inViewStagger('.grid > .note', { staggerMs: 50, y: 16 });
+    });
+  </script>
 </Layout>
