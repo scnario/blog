@@ -23,34 +23,15 @@ const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || impor
 
 <Layout title="控制台 | 管理面板" showSidebar={false} showToc={false}>
   <div class="console-root">
-    <!-- 未登录 -->
-    <section id="login-section" class="login-card">
-      <div class="login-head">
-        <div class="mono kicker">CONSOLE / AUTH</div>
-        <h1>登录管理控制台</h1>
-        <p class="muted">使用 PocketBase 超级管理员账号登录。</p>
-      </div>
-      <div class="form">
-        <label>邮箱
-          <input type="email" id="email" placeholder="admin@example.com" autocomplete="username" />
-        </label>
-        <label>密码
-          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
-        </label>
-        <button id="login-btn" class="btn-primary">登录</button>
-        <div id="login-error" class="error" style="display:none"></div>
-      </div>
-    </section>
-
-    <!-- 已登录 -->
-    <section id="admin-section" style="display:none">
+    <!-- 展示模式 -->
+    <section id="admin-section">
       <header class="admin-head">
         <div>
           <div class="mono kicker">CONSOLE</div>
           <h1>管理控制台</h1>
           <p class="muted" id="admin-email">—</p>
         </div>
-        <button id="logout-btn" class="btn-ghost">登出</button>
+        <span class="btn-ghost demo-badge">展示模式</span>
       </header>
 
       <nav class="tabs">
@@ -160,7 +141,7 @@ const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || impor
       gap: 10px;
       cursor: pointer;
     }
-    input[type="text"], input[type="email"], input[type="password"], input[type="date"],
+    input[type="text"], input[type="email"], input[type="date"],
     input[type="number"], select, textarea {
       width: 100%;
       padding: 10px 12px;
@@ -476,7 +457,7 @@ const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || impor
       color: #D4D4D8;
       border-radius: 10px;
     }
-    input[type="text"], input[type="email"], input[type="password"], input[type="date"],
+    input[type="text"], input[type="email"], input[type="date"],
     input[type="number"], select, textarea {
       background: #18181B;
       border: 1px solid #27272A;
@@ -530,54 +511,19 @@ const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || impor
 </script>
 
 <script>
-  import { $, errorMessage, pb, runConsoleLoaders, val } from '../lib/console-client';
-
-  type AuthModel = { email?: string };
+  import { $, runConsoleLoaders } from '../lib/console-client';
 
   function showAdmin() {
-    const login = $('login-section');
     const admin = $('admin-section');
-    if (login) login.style.display = 'none';
-    if (admin) admin.style.display = 'grid';
+    if (admin) admin.style.removeProperty('display');
     const emailEl = $('admin-email');
-    if (emailEl) emailEl.textContent = (pb.authStore.model as AuthModel | null)?.email || '已登录';
+    if (emailEl) emailEl.textContent = '展示模式 · 无需登录';
     initTabs();
     runConsoleLoaders();
   }
-  function showLogin() {
-    const login = $('login-section');
-    const admin = $('admin-section');
-    if (login) login.style.display = 'block';
-    if (admin) admin.style.display = 'none';
-  }
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (pb.authStore.isValid) {
-      showAdmin();
-    } else {
-      showLogin();
-    }
-
-    $('login-btn')?.addEventListener('click', async () => {
-      const email = val('email');
-      const pw = val('password');
-      const err = $('login-error');
-      if (err) err.style.display = 'none';
-      try {
-        await pb.admins.authWithPassword(email, pw);
-        showAdmin();
-      } catch (e) {
-        if (err) {
-          err.textContent = '登录失败：' + (errorMessage(e) || '凭据无效');
-          err.style.display = 'block';
-        }
-      }
-    });
-
-    $('logout-btn')?.addEventListener('click', () => {
-      pb.authStore.clear();
-      showLogin();
-    });
+    showAdmin();
   });
 
   function initTabs() {
