@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 
 export default defineConfig({
+  site: 'https://showcase.91917788.xyz',
   output: 'server',
 
   // 旧 .md 路由 → 新 /articles/<slug> 301 重定向
