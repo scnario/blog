@@ -22,7 +22,7 @@
 | 前端框架 | Astro 6 + `@astrojs/node` standalone（SSR） |
 | 样式 | Tailwind 4 + 自定义 CSS token，7 主题统一变量 |
 | 动效 | Motion One（~3KB）+ Astro `<ClientRouter />` |
-| 数据 | PocketBase 0.26.x（通过 `PB_URL` 环境变量连接） |
+| 数据 | PocketBase 0.26.x（公网实例 `https://db.91917788.xyz`，也可通过 `PB_URL` 环境变量覆盖） |
 | 内容渲染 | `marked`（Markdown → HTML） |
 | 部署 | Docker + Node 22 |
 
@@ -64,10 +64,10 @@ npm run test:e2e # Playwright E2E 回归
 
 需要 Node ≥ 22.12（见 `engines`）。
 
-PocketBase 地址通过环境变量配置。公开展示分支中的 `.env.example` 只保留占位值，实际部署时在服务器环境变量中设置真实地址：
+PocketBase 地址默认使用生产实例，也可在本地或服务器环境变量中覆盖：
 
 ```bash
-PB_URL=https://your-pocketbase.example.com
+PB_URL=https://db.91917788.xyz
 ```
 
 ## 一键导入样本

@@ -2,10 +2,10 @@
  * 把 samples/ 下的 3 篇长样本一键导入 PocketBase
  *
  * 用法（PowerShell / bash）：
- *   PB_EMAIL=your-email@example.com PB_PASSWORD=your-password npx tsx scripts/seed-samples.ts
+ *   PB_EMAIL=admin@example.com PB_PASSWORD=xxx npx tsx scripts/seed-samples.ts
  *
  * 可选环境变量：
- *   PB_URL       默认 https://example-pocketbase.invalid
+ *   PB_URL       默认 https://db.91917788.xyz
  *   DRY_RUN=1    只解析、不写入（验证 frontmatter / 连接）
  *   FORCE=1      已存在同 slug 时覆盖（默认跳过）
  *
@@ -19,7 +19,7 @@ import PocketBase from 'pocketbase';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const PB_URL = process.env.PB_URL || 'https://example-pocketbase.invalid';
+const PB_URL = process.env.PB_URL || 'https://db.91917788.xyz';
 const PB_EMAIL = process.env.PB_EMAIL;
 const PB_PASSWORD = process.env.PB_PASSWORD;
 const DRY_RUN = process.env.DRY_RUN === '1';
