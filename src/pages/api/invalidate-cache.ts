@@ -6,31 +6,38 @@
  * 控制台写入 PB 后，不调用这个端点的话，下一次刷新仍然看到老数据。
  *
  * 安全：
- * - 仅 SSR 期间可读 cookie，但本端点不动数据，最坏情况只是清缓存
- * - 即便如此仍要求请求方提供管理员 PB 令牌或允许同域 POST（这里采用同域 POST + CSRF 友好的简单形式）
+ * - 只允许同源 JSON POST，避免爬虫 / 预取 / 外站表单触发缓存清理
+ * - 本端点不接触数据库，只清空进程内缓存
  */
 import type { APIRoute } from 'astro';
 import { invalidateCache } from '../../lib/queries';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, url }) => {
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) {
+    return json({ ok: false, error: 'forbidden' }, 403);
+  }
+
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return json({ ok: false, error: 'application/json required' }, 415);
+  }
+
   let prefix: string | undefined;
   try {
     const body = await request.json();
-    prefix = body?.prefix;
+    prefix = typeof body?.prefix === 'string' ? body.prefix : undefined;
   } catch {
-    // body 为空 = 全部清掉
+    return json({ ok: false, error: 'invalid json' }, 400);
   }
+
   invalidateCache(prefix);
-  return new Response(JSON.stringify({ ok: true, cleared: prefix ?? 'all' }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
+  return json({ ok: true, cleared: prefix ?? 'all' });
 };
 
-export const GET: APIRoute = async () => {
-  invalidateCache();
-  return new Response(JSON.stringify({ ok: true, cleared: 'all' }), {
-    status: 200,
+function json(data: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
     headers: { 'content-type': 'application/json' },
   });
-};
+}

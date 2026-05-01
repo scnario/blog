@@ -79,7 +79,7 @@ const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || impor
         <h4>系统</h4>
         <div class="sidecar-system mono">
           <div>PB · 0.26.x · <span style="color:#6EE7B7">已连接</span></div>
-          <div>cache · 5 min · <a href="javascript:fetch('/api/invalidate-cache').then(()=>alert('缓存已刷新 ✓'))" style="color:#6EE7B7;">手动失效</a></div>
+          <div>cache · 5 min · <a href="javascript:fetch('/api/invalidate-cache',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(()=>alert('缓存已刷新 ✓'))" style="color:#6EE7B7;">手动失效</a></div>
           <div>theme · <span id="sidecar-theme">bento-webui</span></div>
           <div style="margin-top:6px"><a href="/" target="_blank" style="color:var(--surface-link);text-decoration:none;">→ 打开首页查看效果</a></div>
         </div>

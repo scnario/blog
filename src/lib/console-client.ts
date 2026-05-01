@@ -63,8 +63,11 @@ export function clearCookie(name: string) {
  */
 export async function bustCache() {
   try {
-    // GET 简单可靠（Astro 默认 CSRF 会拒非 JSON POST）；端点支持两种方法
-    await fetch('/api/invalidate-cache?t=' + Date.now(), { method: 'GET' });
+    await fetch('/api/invalidate-cache', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
   } catch { /* 没事 */ }
 }
 
