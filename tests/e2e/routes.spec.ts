@@ -19,3 +19,18 @@ test('theme cookie controls html data-theme', async ({ page, context }) => {
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'terminal');
 });
+
+test('production hardening endpoints respond safely', async ({ request }) => {
+  const health = await request.get('/api/health');
+  expect(health.ok()).toBeTruthy();
+  expect(health.headers()['cache-control']).toContain('no-store');
+
+  const robots = await request.get('/robots.txt');
+  expect(await robots.text()).toContain('Disallow: /console');
+
+  const invalidationGet = await request.get('/api/invalidate-cache');
+  expect(invalidationGet.status()).toBe(404);
+
+  const invalidationPost = await request.post('/api/invalidate-cache', { data: {} });
+  expect(invalidationPost.ok()).toBeTruthy();
+});
