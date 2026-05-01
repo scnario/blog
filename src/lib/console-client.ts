@@ -6,7 +6,7 @@ declare global {
   }
 }
 
-const PB_URL = window.__PB_URL__ || import.meta.env.PUBLIC_PB_URL || 'https://example-pocketbase.invalid';
+const PB_URL = window.__PB_URL__ || import.meta.env.PUBLIC_PB_URL || 'https://db.91917788.xyz';
 
 export const pb = new PocketBase(PB_URL);
 

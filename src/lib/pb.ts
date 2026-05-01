@@ -1,7 +1,7 @@
 // src/lib/pb.ts
 import PocketBase from 'pocketbase';
 
-const PB_URL = import.meta.env.PB_URL || 'https://example-pocketbase.invalid';
+const PB_URL = import.meta.env.PB_URL || 'https://db.91917788.xyz';
 
 const pb = new PocketBase(PB_URL);
 
