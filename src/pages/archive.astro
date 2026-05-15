@@ -1,0 +1,225 @@
+---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables: Astro frontmatter symbols are consumed by the template.
+/**
+ * 归档 — 按年/月分组的全文章时间线。
+ *
+ * 数据一次性拉全量（上限 500），按年/月聚合。年是默认展开，月是 sticky 小标题。
+ */
+import Layout from '../layouts/Layout.astro';
+import { getArchive } from '../lib/queries';
+
+const years = await getArchive();
+const totalArticles = years.reduce((s, y) => s + y.total, 0);
+
+function fmtDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(8, 10);
+}
+
+const MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+---
+
+<Layout title="归档 · 博客" showSidebar={true} showToc={false}>
+  <header class="page-head">
+    <div class="kicker mono">ARCHIVE</div>
+    <h1>归档</h1>
+    <p class="muted">按时间回溯全部文章 · 共 {totalArticles} 篇</p>
+  </header>
+
+  {years.length === 0 ? (
+    <div class="empty">
+      <div class="empty-icon">🗓️</div>
+      <div class="empty-title">还没有可归档的文章</div>
+    </div>
+  ) : (
+    <div class="archive">
+      {years.map((y) => (
+        <section class="year">
+          <header class="year-head">
+            <h2 class="year-title">{y.year}</h2>
+            <span class="year-count mono">{y.total} 篇</span>
+          </header>
+
+          {y.months.map((m) => (
+            <div class="month">
+              <h3 class="month-title mono">{MONTH_NAMES[m.month - 1]}</h3>
+              <ul class="entries">
+                {m.items.map((item) => (
+                  <li class="entry">
+                    <span class="day mono">{fmtDay(item.created)}</span>
+                    <a href={`/articles/${item.slug}`} class="entry-link">
+                      <span class="emoji">{item.emoji}</span>
+                      <span class="title">{item.title}</span>
+                      {item.tag && <span class="tag">{item.tag}</span>}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  )}
+
+  <style>
+    .page-head { margin-bottom: 32px; }
+    .kicker {
+      font-size: 11px;
+      color: var(--surface-faint);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .page-head h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--surface-fg);
+    }
+    .muted { color: var(--surface-muted); margin: 8px 0 0; }
+    .mono { font-family: var(--font-mono); }
+
+    .empty {
+      padding: 56px 24px;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
+      color: var(--card-fg);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; color: var(--surface-muted); }
+
+    .archive {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    .year {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      box-shadow: var(--card-shadow);
+      padding: 24px 28px;
+    }
+    .year-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--prose-hr);
+    }
+    .year-title {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--surface-fg);
+    }
+    .year-count {
+      font-size: 12px;
+      color: var(--surface-faint);
+      letter-spacing: 0.04em;
+    }
+
+    .month {
+      margin-top: 18px;
+    }
+    .month-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--surface-link);
+      margin: 0 0 8px;
+    }
+
+    .entries {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .entry {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--prose-hr);
+    }
+    .entry:last-child { border-bottom: none; }
+    .day {
+      flex-shrink: 0;
+      width: 26px;
+      font-size: 12px;
+      color: var(--surface-faint);
+      text-align: right;
+    }
+    .entry-link {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 10px;
+      flex: 1;
+      text-decoration: none;
+      color: var(--card-fg);
+      min-width: 0;
+    }
+    .entry-link:hover .title {
+      color: var(--surface-link);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .emoji {
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+    .title {
+      font-size: 14.5px;
+      font-weight: 500;
+      line-height: 1.5;
+      color: var(--surface-fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1;
+    }
+    .tag {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--prose-tag-bg);
+      color: var(--prose-tag-fg);
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 640px) {
+      .year { padding: 18px 18px; }
+      .year-title { font-size: 24px; }
+      .day { width: 22px; }
+      .title { white-space: normal; }
+      .entry-link { flex-wrap: wrap; }
+    }
+
+    html[data-theme="magazine"] .year,
+    html[data-theme="magazine"] .empty,
+    html[data-theme="magazine"] .tag { border-radius: 0; }
+    html[data-theme="magazine"] .year-title,
+    html[data-theme="magazine"] .title {
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+    }
+  </style>
+</Layout>

@@ -5,7 +5,7 @@
  * Prose 全部走 --prose-* 变量，5 套主题下都有正确对比度。
  */
 import Layout from '../../layouts/Layout.astro';
-import { getArticleBySlug, getAdjacentArticles } from '../../lib/queries';
+import { getArticleBySlug, getAdjacentArticles, getRelatedArticles } from '../../lib/queries';
 import { marked } from 'marked';
 
 const { slug } = Astro.params;
@@ -15,6 +15,7 @@ const article = await getArticleBySlug(slug);
 if (!article) return Astro.redirect('/articles');
 
 const { prev: prevArticle, next: nextArticle } = await getAdjacentArticles(slug);
+const relatedArticles = await getRelatedArticles(slug, article.tag, 3);
 
 const extractedHeadings: Array<{ depth: number; slug: string; text: string }> = [];
 const renderer = new marked.Renderer();
@@ -90,6 +91,27 @@ function readingTime(text: string): string {
         </a>
       ) : <span class="adjacent-spacer" />}
     </nav>
+  )}
+
+  {relatedArticles.length > 0 && (
+    <section class="related" aria-label="相关文章">
+      <header class="related-head">
+        <span class="related-kicker mono">RELATED</span>
+        <h2 class="related-title">相关阅读</h2>
+      </header>
+      <div class="related-grid">
+        {relatedArticles.map((r) => (
+          <a href={`/articles/${r.slug}`} class="related-card">
+            {r.tag && (
+              <span class="related-tag">{r.emoji ? `${r.emoji} ` : ''}{r.tag}</span>
+            )}
+            <h3 class="related-card-title">{r.title}</h3>
+            <p class="related-excerpt">{r.excerpt}</p>
+            <span class="related-date mono">{fmtDate(r.created)}</span>
+          </a>
+        ))}
+      </div>
+    </section>
   )}
 
   <style>
@@ -361,6 +383,90 @@ function readingTime(text: string): string {
     .adjacent-spacer { display: none; }
     @media (max-width: 640px) {
       .adjacent-nav { grid-template-columns: 1fr; }
+    }
+
+    /* --- 相关文章 --- */
+    .related {
+      margin-top: 40px;
+    }
+    .related-head {
+      margin-bottom: 18px;
+    }
+    .related-kicker {
+      font-size: 11px;
+      color: var(--surface-faint);
+      letter-spacing: 0.08em;
+    }
+    .related-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 4px 0 0;
+      color: var(--surface-fg);
+    }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .related-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      box-shadow: var(--card-shadow);
+      text-decoration: none;
+      color: var(--card-fg);
+      transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms;
+    }
+    .related-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--note-shadow-hover);
+    }
+    .related-tag {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: var(--prose-tag-bg);
+      color: var(--prose-tag-fg);
+    }
+    .related-card-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin: 0;
+      color: var(--surface-fg);
+    }
+    .related-excerpt {
+      font-size: 12.5px;
+      color: var(--surface-muted);
+      line-height: 1.6;
+      margin: 0;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .related-date {
+      font-size: 10.5px;
+      color: var(--surface-faint);
+      letter-spacing: 0.02em;
+    }
+    html[data-theme="magazine"] .related-card,
+    html[data-theme="magazine"] .related-tag { border-radius: 0; }
+    html[data-theme="magazine"] .related-card-title {
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
     }
   </style>
 </Layout>

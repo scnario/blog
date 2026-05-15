@@ -2,15 +2,16 @@
  * Sitemap — 全站 SEO 地图
  */
 import type { APIRoute } from 'astro';
-import { getLatestArticles, getLatestNotes, getRecentDiaries } from '../lib/queries';
+import { getLatestArticles, getLatestNotes, getRecentDiaries, getAllTags } from '../lib/queries';
 
 export const GET: APIRoute = async (context) => {
   const base = context.site?.toString() ?? new URL(context.url).origin;
 
-  const [articles, notes, diaries] = await Promise.all([
+  const [articles, notes, diaries, tags] = await Promise.all([
     getLatestArticles(200),
     getLatestNotes(200),
     getRecentDiaries(200),
+    getAllTags(),
   ]);
 
   const urls = [
@@ -18,6 +19,8 @@ export const GET: APIRoute = async (context) => {
     `<url><loc>${base}/articles</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`,
     `<url><loc>${base}/notes</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`,
     `<url><loc>${base}/diary</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`,
+    `<url><loc>${base}/tags</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`,
+    `<url><loc>${base}/archive</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`,
     ...articles.map((a) =>
       `<url><loc>${base}/articles/${a.slug}</loc><lastmod>${new Date(a.created).toISOString()}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`
     ),
@@ -26,6 +29,9 @@ export const GET: APIRoute = async (context) => {
     ),
     ...diaries.map((d) =>
       `<url><loc>${base}/diary/${d.slug}</loc><lastmod>${new Date(d.date || d.created).toISOString()}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>`
+    ),
+    ...tags.map((t) =>
+      `<url><loc>${base}/tags/${encodeURIComponent(t.name)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`
     ),
   ];
 

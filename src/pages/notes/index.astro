@@ -7,9 +7,10 @@
  * 切换主题时整页跟着变（不再是硬编码的奶油黄）。
  */
 import Layout from '../../layouts/Layout.astro';
-import { getLatestNotes } from '../../lib/queries';
+import { getPaginatedNotes } from '../../lib/queries';
 
-const notes = await getLatestNotes(50);
+const page = parseInt(Astro.url.searchParams.get('page') ?? '1') || 1;
+const { items: notes, page: currentPage, totalPages, totalItems } = await getPaginatedNotes(page);
 
 function fmtDate(s: string): string {
   if (!s) return '';
@@ -22,7 +23,7 @@ function fmtDate(s: string): string {
   <header class="page-head">
     <div class="kicker mono">NOTES</div>
     <h1>笔记</h1>
-    <p class="muted">短小灵感与技术片段 · 共 {notes.length} 条</p>
+    <p class="muted">短小灵感与技术片段 · 共 {totalItems} 条</p>
   </header>
 
   {notes.length === 0 ? (
@@ -35,24 +36,42 @@ function fmtDate(s: string): string {
       </div>
     </div>
   ) : (
-    <div class="grid sn-wall">
-      {notes.map((n, i) => {
-        const colors = ['mint', 'coral', 'lilac', 'cream', 'sky', 'peach'];
-        const rot = (i % 2 === 0 ? -1 : 1) * ((i * 7) % 3 + 0.4);
-        return (
-        <a href={`/notes/${n.slug}`} class={`note sn-card ${colors[i % colors.length]}`} style={`transform: rotate(${rot}deg);`}>
-          <span class="sn-pin"></span>
-          <div class="note-emoji">{n.emoji}</div>
-          <div class="note-title">{n.title}</div>
-          <div class="note-excerpt">{n.excerpt}</div>
-          <div class="note-foot">
-            <span class="note-tag">{n.tag}</span>
-            <span class="note-date mono">{fmtDate(n.created)}</span>
-          </div>
-        </a>
-        );
-      })}
-    </div>
+    <>
+      <div class="grid sn-wall">
+        {notes.map((n, i) => {
+          const colors = ['mint', 'coral', 'lilac', 'cream', 'sky', 'peach'];
+          const rot = (i % 2 === 0 ? -1 : 1) * ((i * 7) % 3 + 0.4);
+          return (
+          <a href={`/notes/${n.slug}`} class={`note sn-card ${colors[i % colors.length]}`} style={`transform: rotate(${rot}deg);`}>
+            <span class="sn-pin"></span>
+            <div class="note-emoji">{n.emoji}</div>
+            <div class="note-title">{n.title}</div>
+            <div class="note-excerpt">{n.excerpt}</div>
+            <div class="note-foot">
+              <span class="note-tag">{n.tag}</span>
+              <span class="note-date mono">{fmtDate(n.created)}</span>
+            </div>
+          </a>
+          );
+        })}
+      </div>
+
+      {totalPages > 1 && (
+        <nav class="pagination" aria-label="分页导航">
+          {currentPage > 1 ? (
+            <a href={`/notes?page=${currentPage - 1}`} class="page-btn">← 上一页</a>
+          ) : (
+            <span class="page-btn disabled">← 上一页</span>
+          )}
+          <span class="page-info mono">{currentPage} / {totalPages}</span>
+          {currentPage < totalPages ? (
+            <a href={`/notes?page=${currentPage + 1}`} class="page-btn">下一页 →</a>
+          ) : (
+            <span class="page-btn disabled">下一页 →</span>
+          )}
+        </nav>
+      )}
+    </>
   )}
 
   <style>
@@ -170,6 +189,41 @@ function fmtDate(s: string): string {
       text-transform: uppercase;
       letter-spacing: 0.02em;
     }
+
+    /* --- 分页 --- */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 36px;
+      padding: 16px 0;
+    }
+    .page-btn {
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--surface-link);
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      transition: transform 180ms, box-shadow 180ms;
+    }
+    .page-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--card-shadow);
+    }
+    .page-btn.disabled {
+      color: var(--surface-faint);
+      pointer-events: none;
+      opacity: 0.4;
+    }
+    .page-info {
+      font-size: 13px;
+      color: var(--surface-muted);
+    }
+    html[data-theme="magazine"] .page-btn { border-radius: 0; }
   </style>
 
   <script>

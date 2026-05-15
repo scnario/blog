@@ -246,6 +246,28 @@ export async function getLatestNotes(limit = 10): Promise<Note[]> {
   });
 }
 
+export async function getPaginatedNotes(page = 1, perPage = PER_PAGE): Promise<PaginatedResult<Note>> {
+  const cacheKey = `notes:p:${page}:${perPage}`;
+  return memo(cacheKey, async () => {
+    try {
+      const filter = `is_published = true && type = 'note'`;
+      const result = await pb.collection('posts').getList(page, perPage, {
+        filter, sort: '-created',
+      });
+      return {
+        items: result.items.map(normalizeNote),
+        page: result.page,
+        perPage: result.perPage,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages,
+      };
+    } catch (e) {
+      console.warn('[queries] getPaginatedNotes failed', e);
+      return { items: [], page: 1, perPage, totalItems: 0, totalPages: 0 };
+    }
+  });
+}
+
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   try {
     const r = await pb.collection('posts').getFirstListItem(
@@ -397,10 +419,142 @@ export async function getDiaryBySlug(slug: string): Promise<Diary | null> {
 
 // ------------------------------ Tag Cloud ------------------------------
 
+/**
+ * 相关文章推荐：同标签优先，按发布时间降序，剔除自己。
+ * 若同标签不足 limit 条，用最新文章补齐。
+ */
+export async function getRelatedArticles(slug: string, tag: string, limit = 3): Promise<Article[]> {
+  const cacheKey = `articles:related:${slug}:${tag}:${limit}`;
+  return memo(cacheKey, async () => {
+    try {
+      const items: Article[] = [];
+      const seen = new Set<string>([slug]);
+
+      if (tag) {
+        const sameTag = await pb.collection('posts').getList(1, limit + 1, {
+          filter: `is_published = true && tag = "${pbString(tag)}" && slug != "${pbString(slug)}"`,
+          sort: '-created',
+        });
+        for (const r of sameTag.items) {
+          const a = normalizeArticle(r);
+          if (seen.has(a.slug)) continue;
+          items.push(a);
+          seen.add(a.slug);
+          if (items.length >= limit) return items;
+        }
+      }
+
+      // 不够则用最新文章补齐
+      const fallback = await pb.collection('posts').getList(1, limit + 5, {
+        filter: `is_published = true && slug != "${pbString(slug)}"`,
+        sort: '-created',
+      });
+      for (const r of fallback.items) {
+        const a = normalizeArticle(r);
+        if (seen.has(a.slug)) continue;
+        items.push(a);
+        seen.add(a.slug);
+        if (items.length >= limit) break;
+      }
+      return items;
+    } catch (e) {
+      console.warn('[queries] getRelatedArticles failed', e);
+      return [];
+    }
+  });
+}
+
+// ------------------------------ Archive ------------------------------
+
+export interface ArchiveEntry {
+  slug: string;
+  title: string;
+  tag: string;
+  emoji: string;
+  created: string;
+}
+
+export interface ArchiveMonth {
+  year: number;
+  month: number;     // 1-12
+  items: ArchiveEntry[];
+}
+
+export interface ArchiveYear {
+  year: number;
+  total: number;
+  months: ArchiveMonth[];
+}
+
+/**
+ * 归档：按年/月分组所有已发布文章。
+ * 一次性拉全量（上限 500，按博客规模足够），客户端再分页代价大。
+ */
+export async function getArchive(): Promise<ArchiveYear[]> {
+  return memo('archive', async () => {
+    const fetchWith = async (filter: string) => {
+      const result = await pb.collection('posts').getList(1, 500, {
+        filter, sort: '-created',
+        fields: 'slug,title,tag,emoji,created',
+      });
+      return result.items;
+    };
+    let raw: any[] = [];
+    try {
+      raw = await fetchWith(`is_published = true && type = 'article'`);
+    } catch {
+      try {
+        raw = await fetchWith(`is_published = true`);
+      } catch (e) {
+        console.warn('[queries] getArchive failed', e);
+        return [];
+      }
+    }
+
+    const byYearMonth = new Map<string, ArchiveMonth>();
+    for (const r of raw) {
+      const d = new Date(r.created);
+      if (Number.isNaN(d.getTime())) continue;
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      const key = `${y}-${m}`;
+      let bucket = byYearMonth.get(key);
+      if (!bucket) {
+        bucket = { year: y, month: m, items: [] };
+        byYearMonth.set(key, bucket);
+      }
+      bucket.items.push({
+        slug: safe(r.slug, r.id),
+        title: safe(r.title, '(untitled)'),
+        tag: safe(r.tag, ''),
+        emoji: safe(r.emoji, '📝'),
+        created: r.created,
+      });
+    }
+
+    const byYear = new Map<number, ArchiveYear>();
+    for (const m of byYearMonth.values()) {
+      let yEntry = byYear.get(m.year);
+      if (!yEntry) {
+        yEntry = { year: m.year, total: 0, months: [] };
+        byYear.set(m.year, yEntry);
+      }
+      yEntry.months.push(m);
+      yEntry.total += m.items.length;
+    }
+    return [...byYear.values()]
+      .sort((a, b) => b.year - a.year)
+      .map((y) => ({
+        ...y,
+        months: y.months.sort((a, b) => b.month - a.month),
+      }));
+  });
+}
+
 export async function getTagCloud(limit = 12): Promise<TagCount[]> {
   return memo(`tags:${limit}`, async () => {
     try {
-      const result = await pb.collection('posts').getList(1, 200, {
+      const result = await pb.collection('posts').getList(1, 500, {
         filter: 'is_published = true',
         fields: 'tag',
       });
@@ -418,4 +572,9 @@ export async function getTagCloud(limit = 12): Promise<TagCount[]> {
       return [];
     }
   });
+}
+
+/** 全部标签（不限 limit），用于 /tags 总览页 */
+export async function getAllTags(): Promise<TagCount[]> {
+  return getTagCloud(9999);
 }

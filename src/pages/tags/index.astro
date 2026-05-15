@@ -1,0 +1,138 @@
+---
+// biome-ignore-all lint/correctness/noUnusedImports lint/correctness/noUnusedVariables: Astro frontmatter symbols are consumed by the template.
+/**
+ * 标签总览 — 全站所有标签，按文章数排序。
+ *
+ * 字号根据 count 缩放（log scale，避免极端），作为「分类」入口的视觉锚。
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getAllTags } from '../../lib/queries';
+
+const tags = await getAllTags();
+const maxCount = Math.max(1, ...tags.map(t => t.count));
+
+function scaleFontSize(count: number): number {
+  // 14px .. 28px，按 log 缩放
+  const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
+  return Math.round(14 + ratio * 14);
+}
+---
+
+<Layout title="标签 · 博客" showSidebar={true} showToc={false}>
+  <header class="page-head">
+    <div class="kicker mono">TAGS</div>
+    <h1>标签</h1>
+    <p class="muted">按主题浏览全部文章 · 共 {tags.length} 个标签</p>
+  </header>
+
+  {tags.length === 0 ? (
+    <div class="empty">
+      <div class="empty-icon">🏷️</div>
+      <div class="empty-title">还没有标签</div>
+      <div class="empty-hint">在控制台为文章设置 <code>tag</code> 字段后，这里会出现。</div>
+    </div>
+  ) : (
+    <div class="cloud">
+      {tags.map((t) => (
+        <a
+          href={`/tags/${encodeURIComponent(t.name)}`}
+          class="tag-chip"
+          style={`font-size: ${scaleFontSize(t.count)}px;`}
+        >
+          <span class="hash">#</span>{t.name}
+          <span class="count mono">{t.count}</span>
+        </a>
+      ))}
+    </div>
+  )}
+
+  <style>
+    .page-head { margin-bottom: 28px; }
+    .kicker {
+      font-size: 11px;
+      color: var(--surface-faint);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .page-head h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--surface-fg);
+    }
+    .muted { color: var(--surface-muted); margin: 8px 0 0; }
+    .mono { font-family: var(--font-mono); }
+
+    .empty {
+      padding: 48px 24px;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
+      color: var(--card-fg);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; color: var(--surface-fg); }
+    .empty-hint {
+      font-size: 13px;
+      color: var(--surface-muted);
+      margin-top: 8px;
+    }
+    code {
+      font-family: var(--font-mono);
+      background: rgba(0,0,0,0.05);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: baseline;
+      padding: 28px 24px;
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 18px;
+      box-shadow: var(--card-shadow);
+    }
+    .tag-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--prose-tag-bg);
+      color: var(--prose-tag-fg);
+      text-decoration: none;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      transition: transform 180ms, box-shadow 180ms;
+      line-height: 1.4;
+    }
+    .tag-chip:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--note-shadow-hover, 0 6px 16px rgba(0,0,0,0.08));
+    }
+    .hash {
+      color: var(--surface-faint);
+      margin-right: 2px;
+    }
+    .count {
+      font-size: 0.7em;
+      color: var(--surface-faint);
+      padding-left: 4px;
+    }
+
+    html[data-theme="magazine"] .cloud,
+    html[data-theme="magazine"] .empty { border-radius: 0; }
+    html[data-theme="magazine"] .tag-chip {
+      border-radius: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</Layout>

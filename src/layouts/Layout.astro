@@ -110,6 +110,10 @@ const pathname = Astro.url.pathname;
     {ogImage && <meta property="og:image:height" content="630" />}
     {ogImage && <meta name="twitter:image" content={ogImage} />}
 
+    <!-- Feed 自动发现 -->
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml" />
+    <link rel="alternate" type="application/atom+xml" title="Atom" href="/atom.xml" />
+
     <!-- 路由切换：默认 fade，无白屏 -->
     <ClientRouter />
     <!-- prefers-reduced-motion 下取消 fade 转场 -->
