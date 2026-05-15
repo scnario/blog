@@ -22,9 +22,24 @@
       <label class="span-2">摘要（Bento 卡 / 列表预览）
         <textarea id="post-excerpt" rows="2" placeholder="一两句话引导读者点进来"></textarea>
       </label>
-      <label class="span-2">正文 (Markdown)
+      <label class="span-2">封面图（可选）
+        <div class="cover-row">
+          <input type="file" id="post-cover" accept="image/*" />
+          <div id="post-cover-preview" class="cover-preview" aria-hidden="true"></div>
+          <button type="button" id="post-cover-clear" class="btn-ghost small" hidden>清除</button>
+        </div>
+        <small class="muted">支持 2MB 以内的 JPG / PNG / WebP。保存后写入 <code>posts.cover</code>。</small>
+      </label>
+      <div class="span-2 editor-tabs" role="tablist" aria-label="编辑模式切换">
+        <button type="button" class="editor-tab active" data-edit-tab="write" role="tab" aria-selected="true">✏️ 编辑</button>
+        <button type="button" class="editor-tab" data-edit-tab="preview" role="tab" aria-selected="false">👁 预览</button>
+      </div>
+      <label class="span-2 editor-pane" data-pane="write">正文 (Markdown)
         <textarea id="post-content" rows="14" placeholder="# 开始写吧…"></textarea>
       </label>
+      <div class="span-2 editor-pane preview-pane" data-pane="preview" hidden>
+        <div id="post-content-preview" class="prose-preview"></div>
+      </div>
       <label class="checkbox span-2">
         <input type="checkbox" id="post-publish" checked />
         <span>立即发布 <code>is_published = true</code></span>
@@ -45,7 +60,70 @@
 </div>
 
 <script>
+  import { marked } from 'marked';
   import { $, bustCache, checked, errorMessage, escapeHtml, fetchPostsByType, isUnknownFieldError, pb, registerConsoleLoader, setVal, status, updateSidecar, val } from '../../lib/console-client';
+
+  // ---- Markdown 预览：编辑 / 预览 切换 ----
+  function setupEditorTabs() {
+    const tabs = document.querySelectorAll<HTMLButtonElement>('[data-edit-tab]');
+    const panes = document.querySelectorAll<HTMLElement>('[data-pane]');
+    const preview = document.getElementById('post-content-preview');
+    const editor = document.getElementById('post-content') as HTMLTextAreaElement | null;
+    if (!tabs.length || !preview || !editor) return;
+
+    const renderPreview = () => {
+      const md = editor.value || '';
+      try {
+        preview.innerHTML = String(marked.parse(md, { gfm: true }));
+      } catch (e) {
+        preview.innerHTML = `<p class="muted">预览失败：${escapeHtml(errorMessage(e))}</p>`;
+      }
+    };
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.editTab;
+        tabs.forEach(t => {
+          const isActive = t === tab;
+          t.classList.toggle('active', isActive);
+          t.setAttribute('aria-selected', String(isActive));
+        });
+        panes.forEach(p => p.hidden = p.dataset.pane !== target);
+        if (target === 'preview') renderPreview();
+      });
+    });
+  }
+
+  // ---- 封面图上传预览 ----
+  function setupCoverPreview() {
+    const input = document.getElementById('post-cover') as HTMLInputElement | null;
+    const preview = document.getElementById('post-cover-preview') as HTMLDivElement | null;
+    const clearBtn = document.getElementById('post-cover-clear') as HTMLButtonElement | null;
+    if (!input || !preview) return;
+
+    const reset = () => {
+      input.value = '';
+      preview.style.backgroundImage = '';
+      preview.classList.remove('has-image');
+      if (clearBtn) clearBtn.hidden = true;
+    };
+    input.addEventListener('change', () => {
+      const f = input.files?.[0];
+      if (!f) return reset();
+      if (f.size > 2 * 1024 * 1024) {
+        alert('封面图最大 2MB，请压缩后重试');
+        return reset();
+      }
+      const url = URL.createObjectURL(f);
+      preview.style.backgroundImage = `url(${url})`;
+      preview.classList.add('has-image');
+      if (clearBtn) clearBtn.hidden = false;
+    });
+    clearBtn?.addEventListener('click', reset);
+  }
+
+  setupEditorTabs();
+  setupCoverPreview();
+
 
   type PostRecord = { id: string; title?: string; slug?: string; is_published?: boolean };
 
@@ -105,9 +183,11 @@
   }
 
   $('post-refresh-btn')?.addEventListener('click', () => loadPosts());
-  document.addEventListener('click', async (e) => {
-    if ((e.target as HTMLElement)?.id !== 'post-save-btn') return;
-    const data = {
+
+  function buildPayload(): FormData | Record<string, unknown> {
+    const coverInput = $('post-cover') as HTMLInputElement | null;
+    const file = coverInput?.files?.[0];
+    const base: Record<string, unknown> = {
       title: val('post-title'),
       slug: val('post-slug'),
       content: val('post-content'),
@@ -117,28 +197,58 @@
       is_published: checked('post-publish'),
       type: 'article',
     };
+    if (!file) return base;
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(base)) {
+      fd.append(k, typeof v === 'boolean' ? String(v) : (v as string));
+    }
+    fd.append('cover', file);
+    return fd;
+  }
 
-    if (!data.title || !data.slug) { status('post-status', '标题和 slug 必填', 'error'); return; }
+  function payloadWithout(payload: FormData | Record<string, unknown>, key: string): FormData | Record<string, unknown> {
+    if (payload instanceof FormData) {
+      const fd = new FormData();
+      payload.forEach((v, k) => { if (k !== key) fd.append(k, v); });
+      return fd;
+    }
+    const { [key]: _omit, ...rest } = payload;
+    return rest;
+  }
+
+  document.addEventListener('click', async (e) => {
+    if ((e.target as HTMLElement)?.id !== 'post-save-btn') return;
+    const title = val('post-title');
+    const slug = val('post-slug');
+    if (!title || !slug) { status('post-status', '标题和 slug 必填', 'error'); return; }
+
+    const payload = buildPayload();
     status('post-status', '保存中…', 'pending');
     try {
-      await pb.collection('posts').create(data);
+      await pb.collection('posts').create(payload as any);
       await bustCache();
       status('post-status', '已保存 ✓ 前端缓存已刷新', 'success');
       ['post-title','post-slug','post-content','post-excerpt','post-tag','post-emoji'].forEach(id => setVal(id, ''));
+      const coverInput = $('post-cover') as HTMLInputElement | null;
+      if (coverInput) coverInput.value = '';
+      const coverPreview = $('post-cover-preview');
+      if (coverPreview) { coverPreview.style.backgroundImage = ''; coverPreview.classList.remove('has-image'); }
       await loadPosts();
     } catch (e) {
-      // 若是 type 字段不存在导致的失败，重试不带 type
-      if (isUnknownFieldError(e, 'type')) {
-        try {
-          const { type: _type, ...fallbackData } = data;
-          await pb.collection('posts').create(fallbackData);
-          await bustCache();
-          status('post-status', '已保存 ✓（PB schema 暂无 type 字段）', 'success');
-          await loadPosts();
-          return;
-        } catch (e2) {
-          status('post-status', '保存失败：' + errorMessage(e2), 'error');
-          return;
+      // 字段不存在时退避：依次剔除 type / cover
+      for (const field of ['type', 'cover']) {
+        if (isUnknownFieldError(e, field)) {
+          try {
+            const fallback = payloadWithout(payload, field);
+            await pb.collection('posts').create(fallback as any);
+            await bustCache();
+            status('post-status', `已保存 ✓（PB schema 暂无 ${field} 字段）`, 'success');
+            await loadPosts();
+            return;
+          } catch (e2) {
+            status('post-status', '保存失败：' + errorMessage(e2), 'error');
+            return;
+          }
         }
       }
       status('post-status', '保存失败：' + errorMessage(e), 'error');

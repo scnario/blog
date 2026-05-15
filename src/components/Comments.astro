@@ -1,0 +1,75 @@
+---
+/**
+ * Comments — Giscus (GitHub Discussions) 评论挂件
+ *
+ * 仅当 4 个 PUBLIC_GISCUS_* 环境变量都填齐时渲染，否则整段消失。
+ * 主题跟随用户系统的 prefers-color-scheme（带 dark/light 自动切换）。
+ */
+interface Props {
+  /** 用于映射 discussion 的稳定 key（一般传文章 slug） */
+  term: string;
+}
+const { term } = Astro.props as Props;
+
+const repo = import.meta.env.PUBLIC_GISCUS_REPO;
+const repoId = import.meta.env.PUBLIC_GISCUS_REPO_ID;
+const category = import.meta.env.PUBLIC_GISCUS_CATEGORY;
+const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID;
+const enabled = !!(repo && repoId && category && categoryId);
+---
+
+{enabled && (
+  <section class="comments" aria-label="评论">
+    <header class="comments-head">
+      <span class="kicker mono">COMMENTS</span>
+      <h2>评论</h2>
+    </header>
+    <div class="giscus-mount">
+      <script
+        src="https://giscus.app/client.js"
+        data-repo={repo}
+        data-repo-id={repoId}
+        data-category={category}
+        data-category-id={categoryId}
+        data-mapping="specific"
+        data-term={term}
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="bottom"
+        data-theme="preferred_color_scheme"
+        data-lang="zh-CN"
+        data-loading="lazy"
+        crossorigin="anonymous"
+        async
+      />
+    </div>
+  </section>
+)}
+
+<style>
+  .comments { margin-top: 40px; }
+  .comments-head { margin-bottom: 14px; }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--surface-faint);
+  }
+  .comments h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 4px 0 0;
+    color: var(--surface-fg);
+  }
+  .giscus-mount {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--card-shadow);
+  }
+  html[data-theme="magazine"] .giscus-mount { border-radius: 0; }
+</style>

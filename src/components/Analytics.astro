@@ -1,0 +1,40 @@
+---
+/**
+ * Analytics loader — 按 PUBLIC_ANALYTICS_PROVIDER 选脚本注入方式。
+ *
+ * 支持：
+ *  - 'plausible'    — Plausible.io。SITE_ID=域名（example.com）；SCRIPT_URL 可选（默认官方 CDN）。
+ *  - 'umami'        — Umami。SITE_ID=website-id；SCRIPT_URL=你的实例 /script.js。
+ *  - 'goatcounter'  — GoatCounter。SITE_ID=子域名（不带 .goatcounter.com）。
+ *  - 'script'       — 透传任意脚本：仅用 SCRIPT_URL，无附加属性。
+ *
+ * 开发环境（import.meta.env.DEV）始终跳过，避免污染统计。
+ * 配置缺失则不渲染任何东西（站点没有这个集成）。
+ */
+const provider = import.meta.env.PUBLIC_ANALYTICS_PROVIDER;
+const siteId = import.meta.env.PUBLIC_ANALYTICS_SITE_ID;
+const scriptUrl = import.meta.env.PUBLIC_ANALYTICS_SCRIPT_URL;
+const isDev = import.meta.env.DEV;
+
+const showPlausible = !isDev && provider === 'plausible' && !!siteId;
+const showUmami = !isDev && provider === 'umami' && !!siteId && !!scriptUrl;
+const showGoat = !isDev && provider === 'goatcounter' && !!siteId;
+const showScript = !isDev && provider === 'script' && !!scriptUrl;
+---
+
+{showPlausible && (
+  <script defer data-domain={siteId} src={scriptUrl || 'https://plausible.io/js/script.js'}></script>
+)}
+{showUmami && (
+  <script defer data-website-id={siteId} src={scriptUrl}></script>
+)}
+{showGoat && (
+  <script
+    data-goatcounter={`https://${siteId}.goatcounter.com/count`}
+    async
+    src={scriptUrl || '//gc.zgo.at/count.js'}
+  ></script>
+)}
+{showScript && (
+  <script defer src={scriptUrl}></script>
+)}

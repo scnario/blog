@@ -18,6 +18,7 @@ import ProfileCard from '../components/ProfileCard.astro';
 import TocPanel from '../components/TocPanel.astro';
 import MusicPlayer from '../components/MusicPlayer.astro';
 import TopNav from '../components/TopNav.astro';
+import Analytics from '../components/Analytics.astro';
 import { getSettings } from '../lib/queries';
 import { resolveTheme, type ThemeSlug } from '../lib/theme';
 
@@ -38,6 +39,8 @@ interface Props {
   author?: string;
   /** 文章标签（单个），用于 og:article:tag 与 JSON-LD keywords */
   articleTag?: string;
+  /** 启用 KaTeX 数学公式自动渲染（CDN 加载，仅文章详情页传 true） */
+  enableMath?: boolean;
 }
 
 interface Heading {
@@ -57,6 +60,7 @@ const {
   publishedTime,
   author,
   articleTag,
+  enableMath = false,
 } = Astro.props as Props;
 
 const pageTitle = title || 'scnario';
@@ -186,6 +190,33 @@ const pathname = Astro.url.pathname;
     <!-- Feed 自动发现 -->
     <link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml" />
     <link rel="alternate" type="application/atom+xml" title="Atom" href="/atom.xml" />
+
+    <!-- 统计（生产环境且配置齐全时才注入） -->
+    <Analytics />
+
+    {enableMath && (
+      <>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+          integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+"
+          crossorigin="anonymous"
+        />
+        <script
+          defer
+          src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+          integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg"
+          crossorigin="anonymous"
+        ></script>
+        <script
+          defer
+          src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+          integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk"
+          crossorigin="anonymous"
+          onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\(',right:'\\\\)',display:false},{left:'\\\\[',right:'\\\\]',display:true}],throwOnError:false})"
+        ></script>
+      </>
+    )}
 
     <!-- JSON-LD：Organization + WebSite（每页）；Article（仅文章页） -->
     <script type="application/ld+json" set:html={JSON.stringify(orgLd)} />
@@ -589,11 +620,12 @@ const pathname = Astro.url.pathname;
   </head>
 
   <body class="antialiased min-h-screen">
+    <a href="#main-content" class="skip-link">跳到主内容</a>
     <div id="reading-progress" class="progress-bar"></div>
     <TopNav pathname={pathname} brand={settings.nickname || 'scnario'} />
 
     <div class="page-shell">
-      <main class="page-main">
+      <main id="main-content" class="page-main" tabindex="-1">
         <slot />
       </main>
 

@@ -1,0 +1,164 @@
+---
+/**
+ * Subscribe — 邮件订阅表单
+ *
+ * POST 到 /api/subscribe。后端没配 provider 时返回 503，前端给「走 RSS」回退提示。
+ * 内含 honeypot `_hp` 字段（display:none），机器人会填，真人不会。
+ */
+---
+
+<section class="subscribe" aria-labelledby="subscribe-heading">
+  <header class="sub-head">
+    <span class="kicker mono">SUBSCRIBE</span>
+    <h2 id="subscribe-heading">订阅更新</h2>
+    <p class="muted">新文章发布时收到邮件，或<a href="/atom.xml">通过 RSS / Atom 订阅</a>。</p>
+  </header>
+
+  <form id="subscribe-form" class="sub-form" novalidate>
+    <input
+      type="email"
+      name="email"
+      id="subscribe-email"
+      class="sub-input"
+      placeholder="your@email.com"
+      required
+      autocomplete="email"
+      inputmode="email"
+    />
+    <!-- honeypot：人类看不到、不填 -->
+    <input type="text" name="_hp" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true" />
+    <button type="submit" id="subscribe-btn" class="sub-btn">订阅</button>
+  </form>
+  <p id="subscribe-msg" class="sub-msg" role="status" aria-live="polite"></p>
+</section>
+
+<style>
+  .subscribe {
+    margin-top: 36px;
+    padding: 22px 24px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+  }
+  .sub-head { margin-bottom: 14px; }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--surface-faint);
+  }
+  .sub-head h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 4px 0 6px;
+    color: var(--surface-fg);
+  }
+  .muted {
+    font-size: 13px;
+    color: var(--surface-muted);
+    margin: 0;
+  }
+  .muted a {
+    color: var(--surface-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .sub-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .sub-input {
+    flex: 1 1 240px;
+    min-width: 0;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+    background: var(--surface-bg, transparent);
+    color: var(--surface-fg);
+    font: inherit;
+    font-size: 14px;
+    transition: border-color 180ms, box-shadow 180ms;
+  }
+  .sub-input:focus-visible {
+    outline: none;
+    border-color: var(--surface-link);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--surface-link) 22%, transparent);
+  }
+  .sub-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    background: var(--surface-link);
+    cursor: pointer;
+    transition: filter 180ms, transform 180ms;
+  }
+  .sub-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .sub-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .sub-msg {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: var(--surface-muted);
+    min-height: 1.2em;
+  }
+  .sub-msg.success { color: #15803d; }
+  .sub-msg.error { color: #b91c1c; }
+  .hp {
+    position: absolute !important;
+    left: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  html[data-theme="magazine"] .subscribe,
+  html[data-theme="magazine"] .sub-input,
+  html[data-theme="magazine"] .sub-btn { border-radius: 0; }
+</style>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const form = document.getElementById('subscribe-form') as HTMLFormElement | null;
+    if (!form) return;
+    const btn = document.getElementById('subscribe-btn') as HTMLButtonElement | null;
+    const msg = document.getElementById('subscribe-msg') as HTMLParagraphElement | null;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (document.getElementById('subscribe-email') as HTMLInputElement)?.value?.trim();
+      const hp = (form.querySelector('input[name=_hp]') as HTMLInputElement)?.value ?? '';
+      if (!email) return;
+      if (msg) { msg.textContent = '提交中…'; msg.className = 'sub-msg'; }
+      if (btn) btn.disabled = true;
+      try {
+        const r = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, _hp: hp }),
+        });
+        const data = await r.json().catch(() => ({ ok: false }));
+        if (r.ok && data.ok) {
+          if (msg) { msg.textContent = '✓ 已收到，请查看邮箱确认。'; msg.className = 'sub-msg success'; }
+          form.reset();
+        } else {
+          if (msg) {
+            msg.textContent = data.error || '订阅失败，请稍后再试';
+            msg.className = 'sub-msg error';
+          }
+        }
+      } catch {
+        if (msg) { msg.textContent = '网络错误，请稍后再试'; msg.className = 'sub-msg error'; }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  });
+</script>

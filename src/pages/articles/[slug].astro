@@ -5,6 +5,8 @@
  * Prose 全部走 --prose-* 变量，5 套主题下都有正确对比度。
  */
 import Layout from '../../layouts/Layout.astro';
+import Comments from '../../components/Comments.astro';
+import Subscribe from '../../components/Subscribe.astro';
 import { getArticleBySlug, getAdjacentArticles, getRelatedArticles } from '../../lib/queries';
 import { marked } from 'marked';
 
@@ -31,7 +33,18 @@ renderer.heading = function (textOrObj: any, level: any) {
 };
 
 renderer.image = function (href: string, title: string | null, text: string) {
-  return `<img src="${href}" alt="${text || ''}" loading="lazy" decoding="async"${title ? ` title="${title}"` : ''} />`;
+  // PB 文件 URL 支持 ?thumb=WxH 生成缩略图，用它为大图生成 srcset
+  // 启发式：来源含 /api/files/ 即视为 PB；其余原样输出（外链 / 静态资源）。
+  const isPbFile = typeof href === 'string' && href.includes('/api/files/');
+  let attrs = '';
+  if (isPbFile) {
+    const sizes = [480, 768, 1080, 1600];
+    const srcset = sizes
+      .map((w) => `${href}${href.includes('?') ? '&' : '?'}thumb=${w}x0 ${w}w`)
+      .join(', ');
+    attrs = ` srcset="${srcset}" sizes="(max-width: 720px) 100vw, 720px"`;
+  }
+  return `<img src="${href}" alt="${text || ''}" loading="lazy" decoding="async"${attrs}${title ? ` title="${title}"` : ''} />`;
 };
 
 marked.use({ renderer, gfm: true });
@@ -62,6 +75,7 @@ function readingTime(text: string): string {
   pageType="article"
   publishedTime={new Date(article.created).toISOString()}
   articleTag={article.tag}
+  enableMath={true}
 >
   <a href="/articles" class="back mono">&lt; 返回博客列表</a>
 
@@ -148,6 +162,10 @@ function readingTime(text: string): string {
       ) : <span class="adjacent-spacer" />}
     </nav>
   )}
+
+  <Subscribe />
+
+  <Comments term={article.slug} />
 
   {relatedArticles.length > 0 && (
     <section class="related" aria-label="相关文章">

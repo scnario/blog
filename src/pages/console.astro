@@ -276,6 +276,92 @@ const clientPbUrl = import.meta.env.PUBLIC_PB_URL || process.env.PB_URL || impor
       .form-grid .span-2 { grid-column: span 1; }
     }
 
+    /* 封面图上传 */
+    .cover-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .cover-preview {
+      width: 96px; height: 64px;
+      border-radius: 10px;
+      background: #F4F4F5 center/cover no-repeat;
+      border: 1px dashed #D4D4D8;
+      flex-shrink: 0;
+    }
+    .cover-preview.has-image { border-style: solid; border-color: #A8E6CF; }
+
+    /* Markdown 编辑 / 预览 切换 */
+    .editor-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: -8px;  /* 紧贴下方编辑区 */
+    }
+    .editor-tab {
+      padding: 6px 12px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      color: #6B7280;
+      cursor: pointer;
+      transition: background 160ms, color 160ms;
+    }
+    .editor-tab:hover { color: #1A1A1F; }
+    .editor-tab.active {
+      background: #FAFAF7;
+      color: #1A1A1F;
+      border-color: #E4E4E7;
+    }
+    .editor-pane[hidden] { display: none; }
+    .prose-preview {
+      padding: 14px 16px;
+      background: #FAFAF7;
+      border: 1px solid #E4E4E7;
+      border-radius: 10px;
+      min-height: 280px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #1A1A1F;
+    }
+    .prose-preview h1, .prose-preview h2, .prose-preview h3 {
+      font-weight: 700;
+      margin: 18px 0 10px;
+    }
+    .prose-preview h1 { font-size: 1.5em; }
+    .prose-preview h2 { font-size: 1.3em; }
+    .prose-preview h3 { font-size: 1.1em; }
+    .prose-preview p { margin: 12px 0; }
+    .prose-preview code {
+      background: #F4F4F5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.88em;
+    }
+    .prose-preview pre {
+      background: #18181B;
+      color: #E4E4E7;
+      padding: 12px 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12.5px;
+    }
+    .prose-preview pre code { background: transparent; padding: 0; color: inherit; }
+    .prose-preview blockquote {
+      border-left: 3px solid #A8E6CF;
+      padding-left: 12px;
+      color: #6B7280;
+      margin: 12px 0;
+    }
+    .prose-preview ul, .prose-preview ol { padding-left: 22px; }
+    .prose-preview a { color: #6B5BFF; text-decoration: underline; }
+    .prose-preview img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
+
     .list { display: grid; gap: 8px; }
     .list-item {
       display: flex;
