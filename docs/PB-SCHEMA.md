@@ -60,6 +60,7 @@ Create/Update/Delete Rule: 留空（仅 admin）
 | `bio` | Plain text (max 200) | — | 简介（ProfileCard 用） |
 | `social_github` | URL 或 Plain text | — | GitHub URL |
 | `social_email` | Plain text | — | 邮箱 |
+| `social_twitter` | Plain text (max 32) | — | X / Twitter handle，**不带 @**（如 `scnario`）。用于 `twitter:creator` 卡片署名。 |
 | `music_url` | URL | — | 音频文件 URL |
 | `music_title` | Plain text | — | 曲名 |
 | `music_artist` | Plain text | — | 艺术家 |

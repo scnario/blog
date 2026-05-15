@@ -53,7 +53,16 @@ function readingTime(text: string): string {
 }
 ---
 
-<Layout title={`${article.title} · 博客`} description={article.excerpt} ogImage={`/og/${article.slug}.png`} headings={extractedHeadings} showToc={true}>
+<Layout
+  title={`${article.title} · 博客`}
+  description={article.excerpt}
+  ogImage={`/og/${article.slug}.png`}
+  headings={extractedHeadings}
+  showToc={true}
+  pageType="article"
+  publishedTime={new Date(article.created).toISOString()}
+  articleTag={article.tag}
+>
   <a href="/articles" class="back mono">&lt; 返回博客列表</a>
 
   <article class="article">
@@ -74,6 +83,53 @@ function readingTime(text: string): string {
     <div class="article-body">
       <div class="prose" set:html={parsedContent} />
     </div>
+
+    <footer class="share">
+      <span class="share-label mono">SHARE</span>
+      <div class="share-actions">
+        <a
+          class="share-btn x"
+          href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(Astro.url.href)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="分享到 X (Twitter)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817-5.97 6.817H1.67l7.73-8.835L1.25 2.25h6.83l4.713 6.231zM17.083 19.77h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          X
+        </a>
+        <a
+          class="share-btn hn"
+          href={`https://news.ycombinator.com/submitlink?u=${encodeURIComponent(Astro.url.href)}&t=${encodeURIComponent(article.title)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="分享到 Hacker News"
+        >
+          <span class="hn-mark">Y</span>
+          HN
+        </a>
+        <a
+          class="share-btn linkedin"
+          href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(Astro.url.href)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="分享到 LinkedIn"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.59 0 4.25 2.36 4.25 5.43v6.31zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/>
+          </svg>
+          LinkedIn
+        </a>
+        <button class="share-btn copy" type="button" data-copy-url={Astro.url.href} aria-label="复制文章链接">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <span class="copy-text">复制链接</span>
+        </button>
+      </div>
+    </footer>
   </article>
 
   {(prevArticle || nextArticle) && (
@@ -342,7 +398,32 @@ function readingTime(text: string): string {
       border: 1px solid rgba(60, 255, 138, 0.25);
       box-shadow: inset 0 0 24px rgba(60, 255, 138, 0.05);
     }
+  </style>
 
+  <script>
+    document.addEventListener('astro:page-load', () => {
+      const btn = document.querySelector<HTMLButtonElement>('.share-btn.copy');
+      if (!btn) return;
+      const url = btn.dataset.copyUrl || location.href;
+      const label = btn.querySelector<HTMLElement>('.copy-text');
+      const original = label?.textContent ?? '复制链接';
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          btn.classList.add('copied');
+          if (label) label.textContent = '已复制';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            if (label) label.textContent = original;
+          }, 1500);
+        } catch {
+          if (label) label.textContent = '复制失败';
+        }
+      });
+    });
+  </script>
+
+  <style>
     /* --- 上下篇导航 --- */
     .adjacent-nav {
       display: grid;
@@ -467,6 +548,68 @@ function readingTime(text: string): string {
     html[data-theme="magazine"] .related-card-title {
       text-transform: uppercase;
       letter-spacing: 0.01em;
+    }
+
+    /* --- 分享栏 --- */
+    .share {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin: 28px 36px 0;
+      padding: 18px 0 4px;
+      border-top: 1px solid var(--prose-hr);
+    }
+    .share-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--surface-faint);
+    }
+    .share-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      color: var(--surface-fg);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 180ms, box-shadow 180ms, background 180ms;
+    }
+    .share-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--card-shadow);
+    }
+    .share-btn.copy.copied {
+      background: var(--prose-tag-bg);
+      color: var(--prose-tag-fg);
+    }
+    .hn-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      background: #ff6600;
+      color: #fff;
+      font-weight: 800;
+      font-size: 10px;
+    }
+    html[data-theme="magazine"] .share-btn { border-radius: 0; }
+    @media (max-width: 720px) {
+      .share { margin: 24px 20px 0; }
     }
   </style>
 </Layout>

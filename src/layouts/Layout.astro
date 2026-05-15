@@ -30,6 +30,14 @@ interface Props {
   showSidebar?: boolean;
   /** 仅在文章/笔记详情页传 true（且 headings 非空） */
   showToc?: boolean;
+  /** 内容类型：用于 og:type + Schema.org。默认 website；文章页传 'article' */
+  pageType?: 'website' | 'article';
+  /** 文章发布时间 ISO 字符串，仅 pageType='article' 时使用 */
+  publishedTime?: string;
+  /** 文章作者，默认走 settings.nickname */
+  author?: string;
+  /** 文章标签（单个），用于 og:article:tag 与 JSON-LD keywords */
+  articleTag?: string;
 }
 
 interface Heading {
@@ -45,15 +53,62 @@ const {
   headings = [],
   showSidebar = true,
   showToc: showTocProp,
+  pageType = 'website',
+  publishedTime,
+  author,
+  articleTag,
 } = Astro.props as Props;
 
 const pageTitle = title || 'scnario';
-const pageUrl = Astro.url.href;
+// Canonical 应当去掉查询参数（分页等不应该被当作不同的规范页）
+const canonicalUrl = `${Astro.url.origin}${Astro.url.pathname}`;
 const toc = headings.filter((h) => h.depth <= 3);
 const showToc = showTocProp ?? toc.length > 0;
 
 const settings = await getSettings();
 const pageDesc = description || settings.tagline || 'scnario — 技术笔记 · 工具碎片 · 日常杂感';
+const siteName = settings.nickname || 'scnario';
+const authorName = author || siteName;
+const twitterHandle = settings.social_twitter ? `@${settings.social_twitter}` : '';
+const absoluteOgImage = ogImage
+  ? (ogImage.startsWith('http') ? ogImage : `${Astro.url.origin}${ogImage}`)
+  : '';
+
+// JSON-LD：Article（文章页）或 WebSite（其他页面）。永远附带 Organization。
+const orgLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: siteName,
+  url: Astro.url.origin,
+  ...(settings.avatar_main ? { logo: settings.avatar_main } : {}),
+};
+
+const websiteLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: siteName,
+  url: Astro.url.origin,
+  description: settings.tagline,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: `${Astro.url.origin}/search?q={search_term_string}`,
+    'query-input': 'required name=search_term_string',
+  },
+};
+
+const articleLd = pageType === 'article' ? {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: pageTitle,
+  description: pageDesc,
+  url: canonicalUrl,
+  ...(publishedTime ? { datePublished: publishedTime, dateModified: publishedTime } : {}),
+  ...(absoluteOgImage ? { image: absoluteOgImage } : {}),
+  ...(articleTag ? { keywords: articleTag } : {}),
+  author: { '@type': 'Person', name: authorName },
+  publisher: orgLd,
+  mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
+} : null;
 
 // cookie 优先，其次 PB settings.active_theme，最后 default
 const cookieTheme = Astro.cookies.get('site_theme')?.value;
@@ -95,24 +150,49 @@ const pathname = Astro.url.pathname;
     <title>{pageTitle}</title>
     <meta name="description" content={pageDesc} />
 
+    <!-- Canonical -->
+    <link rel="canonical" href={canonicalUrl} />
+
     <!-- Open Graph -->
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={pageType} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDesc} />
-    <meta property="og:url" content={pageUrl} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:locale" content="zh_CN" />
+    {pageType === 'article' && publishedTime && (
+      <meta property="article:published_time" content={publishedTime} />
+    )}
+    {pageType === 'article' && articleTag && (
+      <meta property="article:tag" content={articleTag} />
+    )}
+    {pageType === 'article' && (
+      <meta property="article:author" content={authorName} />
+    )}
+
+    <!-- Twitter Card -->
     <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={pageDesc} />
+    {twitterHandle && <meta name="twitter:site" content={twitterHandle} />}
+    {twitterHandle && <meta name="twitter:creator" content={twitterHandle} />}
 
     <!-- OG Image -->
-    {ogImage && <meta property="og:image" content={ogImage} />}
-    {ogImage && <meta property="og:image:width" content="1200" />}
-    {ogImage && <meta property="og:image:height" content="630" />}
-    {ogImage && <meta name="twitter:image" content={ogImage} />}
+    {absoluteOgImage && <meta property="og:image" content={absoluteOgImage} />}
+    {absoluteOgImage && <meta property="og:image:width" content="1200" />}
+    {absoluteOgImage && <meta property="og:image:height" content="630" />}
+    {absoluteOgImage && <meta name="twitter:image" content={absoluteOgImage} />}
 
     <!-- Feed 自动发现 -->
     <link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml" />
     <link rel="alternate" type="application/atom+xml" title="Atom" href="/atom.xml" />
+
+    <!-- JSON-LD：Organization + WebSite（每页）；Article（仅文章页） -->
+    <script type="application/ld+json" set:html={JSON.stringify(orgLd)} />
+    <script type="application/ld+json" set:html={JSON.stringify(websiteLd)} />
+    {articleLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(articleLd)} />
+    )}
 
     <!-- 路由切换：默认 fade，无白屏 -->
     <ClientRouter />

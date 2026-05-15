@@ -66,6 +66,7 @@ export interface SiteSettings {
   bio: string;
   social_github: string;
   social_email: string;
+  social_twitter: string;        // 仅 handle，如 "scnario"（不带 @）
   music_url: string;
   music_title: string;
   music_artist: string;
@@ -153,6 +154,7 @@ export async function getSettings(): Promise<SiteSettings> {
       bio: safe(raw?.bio, '一个把技术笔记、工具碎片和日常杂感放在同一口井里的地方。'),
       social_github: raw?.social_github || 'https://github.com/scnario/blog',
       social_email: safe(raw?.social_email, ''),
+      social_twitter: safe(raw?.social_twitter, '').replace(/^@/, ''),
       music_url: safe(raw?.music_url, ''),
       music_title: safe(raw?.music_title, ''),
       music_artist: safe(raw?.music_artist, ''),
